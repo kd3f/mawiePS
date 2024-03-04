@@ -15,6 +15,8 @@ class ParticleSystem {
         if (distanceType === 'euclidean') this.distanceMethod =  this.getEuclideanDistance;
         this.distanceForLines = (distanceType === 'euclidean') ? 70 : 4900; //70^2
 
+        this.showBinsBoundaries = true;
+
         this.updateBinSize();
     }
 
@@ -122,7 +124,7 @@ class ParticleSystem {
 
 
 	// Draw connections between close particles including neighboring bins
-	drawConnections(ctx) {
+	drawConnections(ctx, reach = 1) {
 	    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; // Default line color and alpha
 	    ctx.lineWidth = 1; // Default line width
 	
@@ -150,31 +152,57 @@ class ParticleSystem {
 	            ctx.stroke();
 	        }
 	    };
+
+		// Dynamically calculate neighbor offsets based on reach
+		const neighborOffsets = [];
+		for (let dx = -reach; dx <= reach; dx++) {
+		    for (let dy = -reach; dy <= reach; dy++) {
+		        neighborOffsets.push([dx, dy]);
+		    }
+		}
+
+		// Existing drawing code, using the dynamically calculated neighborOffsets...
+		Object.keys(this.bins).forEach(binId => {
+		    const [binX, binY] = binId.split(',').map(Number);
+
+		    neighborOffsets.forEach(([offsetX, offsetY]) => {
+		        const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
+		        const currentBinParticles = this.bins[binId] || [];
+		        const neighborBinParticles = this.bins[neighborBinId] || [];
+
+		        currentBinParticles.forEach(particleA => {
+		            neighborBinParticles.forEach(particleB => {
+		                if (particleA === particleB) return; // Avoid self-comparison
+		                checkAndDrawLine(particleA, particleB);
+		            });
+		        });
+		    });
+		});
 	
-	    Object.keys(this.bins).forEach(binId => {
-	        const [binX, binY] = binId.split(',').map(Number);
-	
-	        // Include particles from the current bin and the 8 surrounding bins
-	        const neighborOffsets = [
-	            [0, 0], // Current bin
-	            [-1, -1], [0, -1], [1, -1], // Top row
-	            [-1, 0], [1, 0], // Middle row (excluding current bin)
-	            [-1, 1], [0, 1], [1, 1] // Bottom row
-	        ];
-	
-	        neighborOffsets.forEach(([offsetX, offsetY]) => {
-	            const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
-	            const currentBinParticles = this.bins[binId] || [];
-	            const neighborBinParticles = this.bins[neighborBinId] || [];
-	
-	            currentBinParticles.forEach(particleA => {
-	                neighborBinParticles.forEach(particleB => {
-	                    if (particleA === particleB) return; // Avoid self-comparison
-	                    checkAndDrawLine(particleA, particleB);
-	                });
-	            });
-	        });
-	    });
+	    //Object.keys(this.bins).forEach(binId => {
+	    //    const [binX, binY] = binId.split(',').map(Number);
+	//
+	    //    // Include particles from the current bin and the 8 surrounding bins
+	    //    const neighborOffsets = [
+	    //        [0, 0], // Current bin
+	    //        [-1, -1], [0, -1], [1, -1], // Top row
+	    //        [-1, 0], [1, 0], // Middle row (excluding current bin)
+	    //        [-1, 1], [0, 1], [1, 1] // Bottom row
+	    //    ];
+	//
+	    //    neighborOffsets.forEach(([offsetX, offsetY]) => {
+	    //        const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
+	    //        const currentBinParticles = this.bins[binId] || [];
+	    //        const neighborBinParticles = this.bins[neighborBinId] || [];
+	//
+	    //        currentBinParticles.forEach(particleA => {
+	    //            neighborBinParticles.forEach(particleB => {
+	    //                if (particleA === particleB) return; // Avoid self-comparison
+	    //                checkAndDrawLine(particleA, particleB);
+	    //            });
+	    //        });
+	    //    });
+	    //});
 	}
 
     // Calculates the distance between two particles based on the distanceMethod formula choosen at instantiation

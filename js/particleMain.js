@@ -9,7 +9,10 @@ const ctx = canvas.getContext('2d');
 // Initialize the particle system
 // Setup Particle System based on device type
 const isMobile = isMobileDevice();
-const particleCount = isMobile ? 500 : 1500; // Less particles on mobile devices
+const particleCountMobile = 500;
+const particleCountDesktop = 1500;
+
+const particleCount = isMobile ? particleCountMobile : particleCountDesktop; // Less particles on mobile devices
 // need to improve the bin adjustment on resize or landscape on mobile
 const binSizeX = isMobile ? 5 : 20; // Adjust bin size for mobile
 const binSizeY = isMobile ? 10 : 10; // Adjust bin size for mobile
@@ -36,13 +39,11 @@ function animate() {
 // Add particles in random positions and start the animation
 addRandomParticles(particleCount);
 
+setupBinsEfficiency();
 // Init animation loop
 animate();
 
-/* Event listeners */
-
-// Handle canvas resizing
-window.addEventListener('resize', () => {
+function setupBinsEfficiency() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
@@ -59,14 +60,68 @@ window.addEventListener('resize', () => {
     //    system.numBinsY = 10; 
     //}
 
-    system.updateBinSize(); // Update the bin size based on new canvas dimensions
+    //system.updateBinSize(); // Update the bin size based on new canvas dimensions
+    calculateAndUpdateParticleDensity(particleCount, particleCountMobile, particleCountDesktop);
 
     // Clear and reassign particles to bins as before
     system.clearBins(); // Clear existing bin assignments
     system.particles.forEach(particle => {
         system.assignToBin(particle); // Reassign particles to bins
     });
-});
+
+
+}
+
+/* Event listeners */
+
+// Handle canvas resizing
+window.addEventListener('resize', setupBinsEfficiency );
+
+function calculateAndUpdateParticleDensity(particleCount) {
+    
+    // Calculate canvas area
+    const canvasArea = canvas.width * canvas.height;
+    
+    // Calculate particle density (particles per unit area)
+    const particleDensity = particleCount / canvasArea;
+    
+    // Update the system with the calculated density
+    updateSystemBasedOnScreenSizeAndDensity(particleDensity, particleCount);
+}
+
+function updateSystemBasedOnScreenSizeAndDensity(particleDensity, particleCurrentCount) {
+    // Assume particleDensity is a value representing the number of particles per unit area
+
+    // Define minimum and maximum bin sizes (in pixels)
+    const minBinSize = 25; // Minimum practical bin size
+    const maxBinSize = 100; // Maximum practical bin size to avoid too large bins
+
+    // Screen dimensions and orientation
+    const screenWidth = canvas.width;
+    const screenHeight = canvas.height;
+    const isLandscape = screenWidth > screenHeight;
+
+    // Calculate an initial bin size based on screen size and orientation
+    // This could be more sophisticated based on actual device performance metrics
+    let baseBinSize = Math.sqrt(screenWidth * screenHeight / (particleDensity * particleCurrentCount));
+    baseBinSize = Math.max(minBinSize, Math.min(baseBinSize, maxBinSize)); // Clamp to min/max sizes
+
+    // Adjust bin size slightly based on orientation
+    let binSizeX = isLandscape ? baseBinSize * 1.1 : baseBinSize; // Slightly larger bins in landscape
+    let binSizeY = isLandscape ? baseBinSize : baseBinSize * 1.1; // Slightly larger bins in portrait
+
+    // Calculate the number of bins based on adjusted bin size
+    let numBinsX = Math.floor(screenWidth / binSizeX);
+    let numBinsY = Math.floor(screenHeight / binSizeY);
+
+    // Update the particle system with the new bin sizes and counts
+    system.numBinsX = numBinsX;
+    system.numBinsY = numBinsY;
+    system.binSizeX = binSizeX;
+    system.binSizeY = binSizeY;
+
+    system.updateBinSize(); // This might now just be used to adjust any internal calculations if needed
+}
 
 canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
