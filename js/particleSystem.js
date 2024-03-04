@@ -282,21 +282,54 @@ class ParticleSystem {
 
     // Handle user interaction
     handleInteraction(x, y) {
-        const repulsionRadius = 100; // Distance within which particles will be repulsed
-        const repulsionStrength = 5; // How strongly the particles are pushed away
-        
-        this.particles.forEach(particle => {
-            const dx = particle.x - x;
-            const dy = particle.y - y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            if (distance < repulsionRadius) {
-                // Calculate repulsion direction and apply it to the particle's velocity
-                const repulseDir = { x: dx / distance, y: dy / distance };
-                particle.vx += repulseDir.x * repulsionStrength;
-                particle.vy += repulseDir.y * repulsionStrength;
-                particle.infect(); // Mark the particle as infected
-            }
-        });
-    }
+	    const repulsionRadius = 100; // Distance within which particles will be repulsed
+	    const repulsionStrength = 5; // How strongly the particles are pushed away
+	
+	    // Calculate the range of bins that could be affected based on the repulsion radius
+	    const minXBin = Math.floor((x - repulsionRadius) / this.binSizeX);
+	    const maxXBin = Math.floor((x + repulsionRadius) / this.binSizeX);
+	    const minYBin = Math.floor((y - repulsionRadius) / this.binSizeY);
+	    const maxYBin = Math.floor((y + repulsionRadius) / this.binSizeY);
+	
+	    // Iterate only over bins that are within the repulsion radius
+	    for (let binX = minXBin; binX <= maxXBin; binX++) {
+	        for (let binY = minYBin; binY <= maxYBin; binY++) {
+	            const binId = `${binX},${binY}`;
+	            const particles = this.bins[binId] || [];
+	
+	            // Apply repulsion to particles within these bins if they're within the radius
+	            particles.forEach(particle => {
+	                const dx = particle.x - x;
+	                const dy = particle.y - y;
+	                const distance = Math.sqrt(dx * dx + dy * dy);
+	
+	                if (distance < repulsionRadius) {
+	                    const repulseDir = { x: dx / distance, y: dy / distance };
+	                    particle.vx += repulseDir.x * repulsionStrength;
+	                    particle.vy += repulseDir.y * repulsionStrength;
+	                    particle.infect(); // Optionally apply additional effects like infection
+	                }
+	            });
+	        }
+	    }
+	}
+
+    //handleInteraction(x, y) {
+    //    const repulsionRadius = 100; // Distance within which particles will be repulsed
+    //    const repulsionStrength = 5; // How strongly the particles are pushed away
+    //    
+    //    this.particles.forEach(particle => {
+    //        const dx = particle.x - x;
+    //        const dy = particle.y - y;
+    //        const distance = Math.sqrt(dx * dx + dy * dy);
+    //        
+    //        if (distance < repulsionRadius) {
+    //            // Calculate repulsion direction and apply it to the particle's velocity
+    //            const repulseDir = { x: dx / distance, y: dy / distance };
+    //            particle.vx += repulseDir.x * repulsionStrength;
+    //            particle.vy += repulseDir.y * repulsionStrength;
+    //            particle.infect(); // Mark the particle as infected
+    //        }
+    //    });
+    //}
 }

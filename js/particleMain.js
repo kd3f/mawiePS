@@ -36,10 +36,12 @@ function animate() {
     system.draw(ctx);
 }
 
+
 // Add particles in random positions and start the animation
 addRandomParticles(particleCount);
 
 setupBinsEfficiency();
+
 // Init animation loop
 animate();
 
@@ -51,16 +53,7 @@ function setupBinsEfficiency() {
     system.canvasWidth = canvas.width;
     system.canvasHeight = canvas.height;
     
-    // TODO :: Evaluate if Dynamically adjust bin counts based on device type or other criteria for performance
-    //if (isMobileDevice()) {
-    //    system.numBinsX = 30; 
-    //    system.numBinsY = 30; 
-    //} else {
-    //    system.numBinsX = 20; 
-    //    system.numBinsY = 10; 
-    //}
-
-    //system.updateBinSize(); // Update the bin size based on new canvas dimensions
+    // TODO :: RE Evaluate if Dynamically adjusting bin based on device type or other criteria for performance
     calculateAndUpdateParticleDensity(particleCount, particleCountMobile, particleCountDesktop);
 
     // Clear and reassign particles to bins as before
