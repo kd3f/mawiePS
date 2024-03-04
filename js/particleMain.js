@@ -45,6 +45,44 @@ setupBinsEfficiency();
 // Init animation loop
 animate();
 
+//// debug FPS
+//let fps = 0;
+//let framesThisSecond = 0;
+//let lastFrameTimeMs = 0;
+//let lastSecond = Date.now();
+//
+//function animateFPSdebug() {
+//    const now = Date.now();
+//    const delta = now - lastFrameTimeMs;
+//    lastFrameTimeMs = now;
+//
+//    // Update FPS every second
+//    if (now - lastSecond >= 1000) {
+//        fps = framesThisSecond;
+//        framesThisSecond = 0;
+//        lastSecond += 1000;
+//    }
+//    framesThisSecond++;
+//
+//    requestAnimationFrame(animateFPSdebug);
+//
+//    // Clear the canvas and draw your frame first
+//    ctx.clearRect(0, 0, canvas.width, canvas.height);
+//    system.update();
+//    system.draw(ctx);
+//
+//    // Then, display the FPS
+//    displayFPS();
+//}
+//
+//function displayFPS() {
+//    ctx.fillStyle = 'white'; // Text color
+//    ctx.font = '16px Arial'; // Text style
+//    ctx.fillText(`FPS: ${fps}`, 20, 30); // Position and text to display
+//}
+//
+//animateFPSdebug();
+
 function setupBinsEfficiency() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
