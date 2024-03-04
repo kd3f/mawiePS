@@ -1,0 +1,77 @@
+body {
+	margin:0;
+    font-family: 'VT323', monospace;
+}
+
+.title-div {
+	font-family: "Work Sans", sans-serif;
+	font-size: 76px;
+    margin: 0 0 -10px 3px;
+}
+
+.subtitle-div {
+	font-size: 18px;
+	text-align:center;
+}
+
+@media all and (max-width: 546px) {
+	.title-div { 
+		font-size: 50px;
+	}
+    .subtitle-div { 
+		font-size: 14px;
+	}
+}
+
+#divToCenter {
+	pointer-events:none;
+	color: rgba(255, 255, 255, .75);
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 10; /* Ensure the div is above the canvas */
+}
+
+canvas {
+	background-color:#000;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%; /* Full width */
+	height: 100%; /* Full height */
+	z-index: 1;
+}
+
+.unselectable {
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* Internet Explorer/Edge */
+  user-select: none;         /* Non-prefixed version, currently supported by Chrome, Opera, and Edge */
+}
+
+.neon {
+  color: rgba(255, 255, 255, .8);
+text-shadow:
+     0 0 5px rgba(13, 215, 255, 1),
+    0 0 10px rgba(13, 215, 255, 1),
+    0 0 20px rgba(13, 215, 255, 1),
+    0 0 40px rgba(13, 215, 255, 1),
+    0 0 80px rgba(13, 215, 255, 1),
+    0 0 90px rgba(13, 215, 255, 1),
+    0 0 100px rgba(13, 215, 255, 1),
+    0 0 150px rgba(13, 215, 255, 1);
+}
+
+.neon-purple {
+  color: rgba(247, 188, 239, 1);
+  text-shadow:
+     0 0 5px rgba(245, 81, 223, 1),
+    0 0 10px rgba(245, 81, 223, 1),
+    0 0 20px rgba(245, 81, 223, 1),
+    0 0 40px rgba(245, 81, 223, 1),
+    0 0 80px rgba(245, 81, 223, 1),
+    0 0 90px rgba(245, 81, 223, 1),
+    0 0 100px rgba(245, 81, 223, 1),
+    0 0 150px rgba(245, 81, 223, 1);
+}
