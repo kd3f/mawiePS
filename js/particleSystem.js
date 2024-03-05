@@ -1,5 +1,5 @@
-class ParticleSystem {
-    constructor(numBinsX=10, numBinsY=10, distanceType='squared') {
+class ParticleSystem { /* distanceType = 'squared' || 'euclidean' */
+    constructor(numBinsX=10, numBinsY=10, distanceType='squared', enablePrecomputeVelocities=true) {
         this.particles = [];
         this.bins = {};
 
@@ -11,18 +11,64 @@ class ParticleSystem {
         this.numBinsY = numBinsY; // Desired number of bins vertically
 
         this.distanceMethod = null; 
-		if (distanceType === 'squared') this.distanceMethod = this.getDistanceSquared;
-        if (distanceType === 'euclidean') this.distanceMethod =  this.getEuclideanDistance;
-        this.distanceForLines = (distanceType === 'euclidean') ? 70 : 4900; //70^2
+		if (distanceType === 'squared') {
+			this.distanceMethod = this.getDistanceSquared;
+			this.collisionLogic = this.collisionLogicSquared;
+		}
+        if (distanceType === 'euclidean') {
+        	this.distanceMethod =  this.getEuclideanDistance;
+        	this.collisionLogic = this.collisionLogicEuclidean;
+        }
+        this.distanceForLines = (distanceType === 'euclidean') ? 80 : 4900; //70^2
 
-        this.showBinsBoundaries = true;
+        this.enablePrecomputeVelocities = enablePrecomputeVelocities;
+
+        this.showBinsBoundaries = false;
+
+        if (this.enablePrecomputeVelocities) {
+        	this.precomputedVelocities = [];
+        	this.precomputeParticlesVelocities();
+		}
 
         this.updateBinSize();
     }
 
+    precomputeParticlesVelocities() {
+		//precompute vectors //
+		const minSpeed = 0.6;
+		const directions = 24;				
+		
+		for (let i = 0; i < directions; i++) {
+		    const theta = (i * (360 / directions)) * (Math.PI / 180); // Convert angle to radians
+		    const vx = Math.cos(theta) * minSpeed;
+		    const vy = Math.sin(theta) * minSpeed;
+		    this.precomputedVelocities.push({ vx, vy });
+		}
+    }
+
+	findClosestPrecomputedVelocity(vx, vy) {
+	    let closestDistance = Infinity;
+	    let closestVelocity = null;
+	
+	    for (const precomputedVelocity of this.precomputedVelocities) {
+	        const dx = precomputedVelocity.vx - vx;
+	        const dy = precomputedVelocity.vy - vy;
+	        const distanceSquared = dx * dx + dy * dy; // No need for Math.sqrt, comparing squared distances is sufficient
+	
+	        if (distanceSquared < closestDistance) {
+	            closestDistance = distanceSquared;
+	            closestVelocity = precomputedVelocity;
+	        }
+	    }
+	
+	    return closestVelocity;
+	}
+
     // Add particle to system
     addParticle(x, y) {
-        const particle = new Particle(x, y);
+    	const speedMethod = (this.enablePrecomputeVelocities) ? 'precomputed' : 'dynamic';
+        const particle = new Particle(x, y, speedMethod);
+        if (this.enablePrecomputeVelocities) particle.setFindClosestPrecomputedVelocity(this.findClosestPrecomputedVelocity.bind(this));
         this.particles.push(particle);
     }
 
@@ -122,7 +168,6 @@ class ParticleSystem {
 	    ctx.restore(); // Restore the context state to what it was before
 	}
 
-
 	// Draw connections between close particles including neighboring bins
 	drawConnections(ctx, reach = 1) {
 	    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; // Default line color and alpha
@@ -161,7 +206,7 @@ class ParticleSystem {
 		    }
 		}
 
-		// Existing drawing code, using the dynamically calculated neighborOffsets...
+		// Drawing code, using the dynamically calculated neighborOffsets...
 		Object.keys(this.bins).forEach(binId => {
 		    const [binX, binY] = binId.split(',').map(Number);
 
@@ -178,31 +223,6 @@ class ParticleSystem {
 		        });
 		    });
 		});
-	
-	    //Object.keys(this.bins).forEach(binId => {
-	    //    const [binX, binY] = binId.split(',').map(Number);
-	//
-	    //    // Include particles from the current bin and the 8 surrounding bins
-	    //    const neighborOffsets = [
-	    //        [0, 0], // Current bin
-	    //        [-1, -1], [0, -1], [1, -1], // Top row
-	    //        [-1, 0], [1, 0], // Middle row (excluding current bin)
-	    //        [-1, 1], [0, 1], [1, 1] // Bottom row
-	    //    ];
-	//
-	    //    neighborOffsets.forEach(([offsetX, offsetY]) => {
-	    //        const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
-	    //        const currentBinParticles = this.bins[binId] || [];
-	    //        const neighborBinParticles = this.bins[neighborBinId] || [];
-	//
-	    //        currentBinParticles.forEach(particleA => {
-	    //            neighborBinParticles.forEach(particleB => {
-	    //                if (particleA === particleB) return; // Avoid self-comparison
-	    //                checkAndDrawLine(particleA, particleB);
-	    //            });
-	    //        });
-	    //    });
-	    //});
 	}
 
     // Calculates the distance between two particles based on the distanceMethod formula choosen at instantiation
@@ -238,11 +258,10 @@ class ParticleSystem {
 	}
 
 	handleCollisions() {
-	    // Iterate over each bin
-	    Object.keys(this.bins).forEach(binId => {
-	        const particles = this.bins[binId]; // Get particles in the current bin
-	
-	        if (!particles) return; // Skip if bin is empty
+	    // Directly iterate over bins without using Object.keys
+	    for (const binId in this.bins) {
+	        const particles = this.bins[binId];
+	        if (!particles || particles.length < 2) continue; // Skip if bin is empty or has only one particle
 	
 	        // Check for collisions only within the same bin
 	        for (let i = 0; i < particles.length; i++) {
@@ -250,35 +269,91 @@ class ParticleSystem {
 	                const p1 = particles[i];
 	                const p2 = particles[j];
 	
-	                // Calculate distance between particles
-	                const dx = p1.x - p2.x;
-	                const dy = p1.y - p2.y;
-	                const distance = Math.sqrt(dx * dx + dy * dy);
-	                const minDistance = p1.radius + p2.radius;
+	                const distance = this.calculateDistance(p1, p2);           
+	                let minDistance = p1.radius + p2.radius;  
+	                minDistance = (this.distanceType === 'squared') ? minDistance*minDistance : minDistance;
 	
 	                if (distance < minDistance) {
 	                    // Collision response logic here
-	                    // Simple collision response
-						const angle = Math.atan2(dy, dx);
-						const speed1 = Math.sqrt(p1.vx * p1.vx + p1.vy * p1.vy);
-						const speed2 = Math.sqrt(p2.vx * p2.vx + p2.vy * p2.vy);
-						
-						p1.vx = Math.cos(angle) * speed2;
-						p1.vy = Math.sin(angle) * speed2;
-						p2.vx = Math.cos(angle + Math.PI) * speed1;
-						p2.vy = Math.sin(angle + Math.PI) * speed1;
-						
-						// Adjust positions to ensure particles are not stuck together
-						const overlap = 0.5 * (minDistance - distance + 1);
-						p1.x += overlap * Math.cos(angle);
-						p1.y += overlap * Math.sin(angle);
-						p2.x -= overlap * Math.cos(angle);
-						p2.y -= overlap * Math.sin(angle);
+	                    this.collisionLogic(p1, p2, distance, minDistance);
+	                    
 	                }
 	            }
 	        }
-	    });
+	    }
 	}
+
+	collisionLogicEuclidean(p1, p2, distance, minDistance) {
+		console.log(distance);
+		const dx = p1.x - p2.x;
+		const dy = p1.y - p2.y;
+		// Simple collision response
+		const angle = Math.atan2(dy, dx);
+		const speed1 = Math.sqrt(p1.vx * p1.vx + p1.vy * p1.vy);
+		const speed2 = Math.sqrt(p2.vx * p2.vx + p2.vy * p2.vy);
+		
+		p1.vx = Math.cos(angle) * speed2;
+		p1.vy = Math.sin(angle) * speed2;
+		p2.vx = Math.cos(angle + Math.PI) * speed1;
+		p2.vy = Math.sin(angle + Math.PI) * speed1;
+		
+		// Adjust positions to ensure particles are not stuck together
+		const overlap = 0.5 * (minDistance - distance + 1);
+		p1.x += overlap * Math.cos(angle);
+		p1.y += overlap * Math.sin(angle);
+		p2.x -= overlap * Math.cos(angle);
+		p2.y -= overlap * Math.sin(angle);
+	}
+
+	// simplified collision logic for faster performance but less accurate
+	// invert velocities method
+	collisionLogicSquared(p1, p2, distanceSquared, minDistanceSquared) {
+	    // Directly invert velocities for bounce
+	    p1.vx = -p1.vx;
+	    p1.vy = -p1.vy;
+	    p2.vx = -p2.vx;
+	    p2.vy = -p2.vy;
+	
+	    // Estimate overlap resolution without sqrt; use a fixed small step based on squared values
+	    // Assuming minDistanceSquared is a bit larger than distanceSquared due to overlap
+	    const overlapStep = 0.9; // Arbitrary step for adjustment
+	    
+	    // Calculate directional vector components between particles
+	    const dx = p1.x - p2.x;
+	    const dy = p1.y - p2.y;
+	
+	    // Normalize the direction vector components based on their squared magnitude
+	    // To avoid sqrt, use a relative adjustment based on the ratio of squared distances
+	    const magnitudeSquared = dx * dx + dy * dy;
+	    const adjustX = dx / magnitudeSquared * overlapStep * (minDistanceSquared - distanceSquared);
+	    const adjustY = dy / magnitudeSquared * overlapStep * (minDistanceSquared - distanceSquared);
+	
+	    // Apply position adjustments to separate particles slightly
+	    // Distribute the adjustment between particles to ensure they move apart equally
+	    p1.x += adjustX / 2;
+	    p1.y += adjustY / 2;
+	    p2.x -= adjustX / 2;
+	    p2.y -= adjustY / 2;
+	}	
+
+
+	// simplified collision logic for faster performance but less accurate
+	/*collisionLogicEuclidean(p1, p2, distance, minDistance) {
+	    const dx = p1.x - p2.x;
+	    const dy = p1.y - p2.y;
+	
+	    // Invert velocities for a simple collision effect
+	    [p1.vx, p2.vx] = [-p2.vx, -p1.vx];
+	    [p1.vy, p2.vy] = [-p2.vy, -p1.vy];
+	
+		// For Euclidean distances, directly use the calculated overlap
+		 const overlap = minDistance - distance;
+		 const adjustmentFactor = overlap / distance; // Normalize based on distance
+		 p1.x += dx * adjustmentFactor;
+		 p1.y += dy * adjustmentFactor;
+		 p2.x -= dx * adjustmentFactor;
+		 p2.y -= dy * adjustmentFactor;
+	}*/
 
     // Handle user interaction
     handleInteraction(x, y) {
@@ -313,23 +388,5 @@ class ParticleSystem {
 	        }
 	    }
 	}
-
-    //handleInteraction(x, y) {
-    //    const repulsionRadius = 100; // Distance within which particles will be repulsed
-    //    const repulsionStrength = 5; // How strongly the particles are pushed away
-    //    
-    //    this.particles.forEach(particle => {
-    //        const dx = particle.x - x;
-    //        const dy = particle.y - y;
-    //        const distance = Math.sqrt(dx * dx + dy * dy);
-    //        
-    //        if (distance < repulsionRadius) {
-    //            // Calculate repulsion direction and apply it to the particle's velocity
-    //            const repulseDir = { x: dx / distance, y: dy / distance };
-    //            particle.vx += repulseDir.x * repulsionStrength;
-    //            particle.vy += repulseDir.y * repulsionStrength;
-    //            particle.infect(); // Mark the particle as infected
-    //        }
-    //    });
-    //}
+/*end of class*/
 }

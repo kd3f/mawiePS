@@ -1,5 +1,5 @@
-class Particle {
-    constructor(x, y) {
+class Particle { // adjustSpeed = 'dynamic' || 'precomputed' 
+    constructor(x, y, adjustSpeed='dynamic') {
         this.x = x;
         this.y = y;
         this.vx = Math.random() * 2 - 1; // Velocity x
@@ -20,22 +20,45 @@ class Particle {
         this.friction = 0.99; // Friction factor; closer to 1 means less friction
         this.minSpeed = 0.6; // Specify the minimum speed
 
-        this.showBinsBoundaries = false;
+        this.adjustForMinimumSpeed = (adjustSpeed==='dynamic') ? this.adjustForMinimumSpeedDynamic : this.adjustForMinimumSpeedPrecomputed;
+
+        this.findClosestPrecomputedVelocity = null; // ParticleSystem function
+
+    }
+
+    setFindClosestPrecomputedVelocity(fn) {
+        this.findClosestPrecomputedVelocity = fn;
+    }
+
+    adjustForMinimumSpeedDynamic() {
+        // Adjust for minimum speed :: more accurate simulation but slow
+        const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+        const angle = Math.atan2(this.vy, this.vx);
+        if (speed < this.minSpeed) {
+            this.vx = Math.cos(angle) * this.minSpeed;
+            this.vy = Math.sin(angle) * this.minSpeed;
+        }
+    }
+
+    adjustForMinimumSpeedPrecomputed() {
+        // Adjust for minimum speed without using Math.sqrt() and Math functions
+        // Snap to closest precomputed velocity if below minSpeed
+        const squaredSpeed = this.vx * this.vx + this.vy * this.vy;
+        const squaredMinSpeed = this.minSpeed * this.minSpeed;
+        if (squaredSpeed < squaredMinSpeed) {
+            const closestVelocity = this.findClosestPrecomputedVelocity(this.vx, this.vy);
+            this.vx = closestVelocity.vx;
+            this.vy = closestVelocity.vy;
+        }
     }
 
 	// Update particle position with improved boundary collision handling
 	update(canvasWidth, canvasHeight) {
 	    // Apply friction
 	    this.vx *= this.friction;
-	    this.vy *= this.friction;
-	
-	    // Adjust for minimum speed
-	    const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-	    const angle = Math.atan2(this.vy, this.vx);
-	    if (speed < this.minSpeed) {
-	        this.vx = Math.cos(angle) * this.minSpeed;
-	        this.vy = Math.sin(angle) * this.minSpeed;
-	    }
+	    this.vy *= this.friction;	
+
+        this.adjustForMinimumSpeed();
 	
 	    // Preliminary position update
 	    this.x += this.vx;

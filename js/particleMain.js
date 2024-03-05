@@ -19,6 +19,26 @@ const binSizeY = isMobile ? 10 : 10; // Adjust bin size for mobile
 
 const system = new ParticleSystem(binSizeX, binSizeY);
 
+// Add particles in random positions and start the animation
+addRandomParticles(particleCount);
+
+// Calculate binSizeX and binSizeY :: also used in the resize listener
+setupBinsEfficiency();
+
+//Show FPS Switch
+const showFPS = true;
+
+//FPS Variables
+let fps = 0;
+let framesThisSecond = 0;
+let lastFrameTimeMs = 0;
+let lastSecond = Date.now();
+
+// Init animation loop
+if(!showFPS) animate();
+if(showFPS) animateFPSdebug(); 
+
+/* particles initialization*/
 // Function to add particles at random positions
 function addRandomParticles(n) {
     for (let i = 0; i < n; i++) {
@@ -36,53 +56,42 @@ function animate() {
     system.draw(ctx);
 }
 
+/* Test & Debug Animate Loop with FPS */
+function animateFPSdebug() {
+    const now = Date.now();
+    const delta = now - lastFrameTimeMs;
+    lastFrameTimeMs = now;
 
-// Add particles in random positions and start the animation
-addRandomParticles(particleCount);
+    // Update FPS every second
+    if (now - lastSecond >= 1000) {
+        fps = framesThisSecond;
+        framesThisSecond = 0;
+        lastSecond += 1000;
+    }
+    framesThisSecond++;
 
-setupBinsEfficiency();
+    requestAnimationFrame(animateFPSdebug);
 
-// Init animation loop
-animate();
+    // Clear the canvas and draw your frame first
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    system.update();
+    system.draw(ctx);
 
-//// debug FPS
-//let fps = 0;
-//let framesThisSecond = 0;
-//let lastFrameTimeMs = 0;
-//let lastSecond = Date.now();
-//
-//function animateFPSdebug() {
-//    const now = Date.now();
-//    const delta = now - lastFrameTimeMs;
-//    lastFrameTimeMs = now;
-//
-//    // Update FPS every second
-//    if (now - lastSecond >= 1000) {
-//        fps = framesThisSecond;
-//        framesThisSecond = 0;
-//        lastSecond += 1000;
-//    }
-//    framesThisSecond++;
-//
-//    requestAnimationFrame(animateFPSdebug);
-//
-//    // Clear the canvas and draw your frame first
-//    ctx.clearRect(0, 0, canvas.width, canvas.height);
-//    system.update();
-//    system.draw(ctx);
-//
-//    // Then, display the FPS
-//    displayFPS();
-//}
-//
-//function displayFPS() {
-//    ctx.fillStyle = 'white'; // Text color
-//    ctx.font = '16px Arial'; // Text style
-//    ctx.fillText(`FPS: ${fps}`, 20, 30); // Position and text to display
-//}
-//
-//animateFPSdebug();
+    // Display the FPS
+    displayFPS();
+}
 
+function displayFPS() {
+    ctx.fillStyle = 'white'; // Text color
+    ctx.font = '16px Arial'; // Text style
+    ctx.fillText(`FPS: ${fps}`, 20, 30); // Position and text to display
+}
+
+/* Resize Event listener */
+// Handle canvas resizing
+window.addEventListener('resize', setupBinsEfficiency );
+
+/* Bin division logic based on particle density and screen size */
 function setupBinsEfficiency() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -99,17 +108,9 @@ function setupBinsEfficiency() {
     system.particles.forEach(particle => {
         system.assignToBin(particle); // Reassign particles to bins
     });
-
-
 }
 
-/* Event listeners */
-
-// Handle canvas resizing
-window.addEventListener('resize', setupBinsEfficiency );
-
-function calculateAndUpdateParticleDensity(particleCount) {
-    
+function calculateAndUpdateParticleDensity(particleCount) {    
     // Calculate canvas area
     const canvasArea = canvas.width * canvas.height;
     
@@ -121,7 +122,7 @@ function calculateAndUpdateParticleDensity(particleCount) {
 }
 
 function updateSystemBasedOnScreenSizeAndDensity(particleDensity, particleCurrentCount) {
-    // Assume particleDensity is a value representing the number of particles per unit area
+    // particleDensity represents the number of particles per unit area
 
     // Define minimum and maximum bin sizes (in pixels)
     const minBinSize = 25; // Minimum practical bin size
@@ -154,6 +155,7 @@ function updateSystemBasedOnScreenSizeAndDensity(particleDensity, particleCurren
     system.updateBinSize(); // This might now just be used to adjust any internal calculations if needed
 }
 
+/* Click Event listener */
 canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;    // Relationship bitmap vs. element for X
