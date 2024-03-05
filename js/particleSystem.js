@@ -1,5 +1,5 @@
-class ParticleSystem { /* distanceType = 'squared' || 'euclidean' */
-    constructor(numBinsX=10, numBinsY=10, distanceType='squared', enablePrecomputeVelocities=true) {
+class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
+    constructor(numBinsX=10, numBinsY=10, distanceType='hybrid', enablePrecomputeVelocities=true) {
         this.particles = [];
         this.bins = {};
 
@@ -12,14 +12,22 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' */
 
         this.distanceMethod = null; 
 		if (distanceType === 'squared') {
-			this.distanceMethod = this.getDistanceSquared;
+			this.distanceMethodLines = this.getDistanceSquared;
+			this.distanceMethodCollisions = this.getDistanceSquared;
 			this.collisionLogic = this.collisionLogicSquared;
 		}
         if (distanceType === 'euclidean') {
-        	this.distanceMethod =  this.getEuclideanDistance;
+        	this.distanceMethodLines = this.getEuclideanDistance;
+        	this.distanceMethodCollisions =  this.getEuclideanDistance;
         	this.collisionLogic = this.collisionLogicEuclidean;
         }
-        this.distanceForLines = (distanceType === 'euclidean') ? 80 : 4900; //70^2
+        if (distanceType === 'hybrid') {
+        	this.distanceMethodLines = this.getDistanceSquared;
+        	this.distanceMethodCollisions =  this.getEuclideanDistance;
+        	this.collisionLogic = this.collisionLogicEuclidean;
+        }
+        //70^2 for 'squared'  || 'hybrid'
+        this.distanceForLines = (distanceType === 'squared' || distanceType === 'hybrid') ? 4900 : 80; //70^2
 
         this.enablePrecomputeVelocities = enablePrecomputeVelocities;
 
@@ -77,7 +85,7 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' */
 	    this.clearBins();
 	    this.particles.forEach(particle => {
 	        particle.update(this.canvasWidth, this.canvasHeight);
-	        particle.updateColor(); // Ensure this is still here if you're using color transitions
+	        particle.updateColor(); // Using color transitions
 	        this.assignToBin(particle);
 	    });
 
@@ -174,17 +182,13 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' */
 	    ctx.lineWidth = 1; // Default line width
 	
 	    const checkAndDrawLine = (particleA, particleB) => {
-	        const distance = this.calculateDistance(particleA, particleB);
+	        const distance = this.distanceMethodLines(particleA, particleB);
 	        const maxDistance = this.distanceForLines; // Adjust as needed
 	        if (distance < maxDistance) {
 	            const alpha = Math.max(0.1, 1 - distance / maxDistance);
-	            //ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;originalColorRGB
 
 	            const originalLineColor = `rgba(${particleA.originalColorRGB[0]}, ${particleA.originalColorRGB[1]}, ${particleA.originalColorRGB[2]}, ${alpha})`;
 	            let infectedLineColor = `rgba(0, 255, 255, ${alpha})`;
-
-	            //if (particleA.infected) console.log('particleA', particleA.color);
-	            //if (particleB.infected) console.log('particleB', particleB.color);
 
 	            if (particleA.infected) infectedLineColor = `rgba(${particleA.effectRGB[0]}, ${particleA.effectRGB[1]}, ${particleA.effectRGB[2]}, ${alpha})`;
 	            if (particleB.infected) infectedLineColor = `rgba(${particleB.effectRGB[0]}, ${particleB.effectRGB[1]}, ${particleB.effectRGB[2]}, ${alpha})`;
@@ -227,7 +231,7 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' */
 
     // Calculates the distance between two particles based on the distanceMethod formula choosen at instantiation
     calculateDistance(particleA, particleB) {
-    	return this.distanceMethod(particleA, particleB);
+    	return this.distanceMethodCollisions(particleA, particleB);
     }
     
     getEuclideanDistance(p1, p2) {
@@ -258,33 +262,39 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' */
 	}
 
 	handleCollisions() {
-	    // Directly iterate over bins without using Object.keys
 	    for (const binId in this.bins) {
 	        const particles = this.bins[binId];
-	        if (!particles || particles.length < 2) continue; // Skip if bin is empty or has only one particle
-	
-	        // Check for collisions only within the same bin
+	        if (!particles || particles.length < 2) continue;// Skip if bin is empty or has only one particle
+
+			// Check for collisions only within the same bin
 	        for (let i = 0; i < particles.length; i++) {
 	            for (let j = i + 1; j < particles.length; j++) {
 	                const p1 = particles[i];
 	                const p2 = particles[j];
-	
-	                const distance = this.calculateDistance(p1, p2);           
-	                let minDistance = p1.radius + p2.radius;  
-	                minDistance = (this.distanceType === 'squared') ? minDistance*minDistance : minDistance;
-	
+	                const distance = this.calculateDistance(p1, p2); // Returns squared or Euclidean distance
+	                
+	                let minDistance = (this.distanceType === 'squared') ? p.squaredRadius : p1.radius + p2.radius;
+
+	                // TODO:: improve collision detection for squared distance calculation
 	                if (distance < minDistance) {
-	                    // Collision response logic here
-	                    this.collisionLogic(p1, p2, distance, minDistance);
-	                    
-	                }
+	            	    // Collision detected 
+	            	    this.collisionLogic(p1, p2, distance, minDistance);
+	            	}
 	            }
 	        }
 	    }
 	}
 
+	debugInfect(p1, p2) {
+		p1.effectRGB = [255, 5, 5];
+		p1.effectColor = 'rgba(255, 5, 5, 1)';
+		p1.infect(); 
+		p2.effectRGB = [255, 5, 5];		
+		p1.effectColor = 'rgba(255, 5, 5, 1)';
+		p2.infect();
+	}
+
 	collisionLogicEuclidean(p1, p2, distance, minDistance) {
-		console.log(distance);
 		const dx = p1.x - p2.x;
 		const dy = p1.y - p2.y;
 		// Simple collision response
@@ -305,7 +315,7 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' */
 		p2.y -= overlap * Math.sin(angle);
 	}
 
-	// simplified collision logic for faster performance but less accurate
+	// simplified collision logic with distanceSquared for faster performance but less accurate
 	// invert velocities method
 	collisionLogicSquared(p1, p2, distanceSquared, minDistanceSquared) {
 	    // Directly invert velocities for bounce
@@ -314,8 +324,7 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' */
 	    p2.vx = -p2.vx;
 	    p2.vy = -p2.vy;
 	
-	    // Estimate overlap resolution without sqrt; use a fixed small step based on squared values
-	    // Assuming minDistanceSquared is a bit larger than distanceSquared due to overlap
+	    // Estimate overlap resolution without sqrt; use a fixed small step
 	    const overlapStep = 0.9; // Arbitrary step for adjustment
 	    
 	    // Calculate directional vector components between particles
@@ -336,24 +345,58 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' */
 	    p2.y -= adjustY / 2;
 	}	
 
-
-	// simplified collision logic for faster performance but less accurate
-	/*collisionLogicEuclidean(p1, p2, distance, minDistance) {
+	// variant2 :: simplified collision logic with distanceSquared for faster performance but less accurate
+	collisionLogicSquaredV2(p1, p2, distanceSquared, minDistanceSquared) {
+	    // Calculate directional vector components between particles
 	    const dx = p1.x - p2.x;
 	    const dy = p1.y - p2.y;
 	
-	    // Invert velocities for a simple collision effect
-	    [p1.vx, p2.vx] = [-p2.vx, -p1.vx];
-	    [p1.vy, p2.vy] = [-p2.vy, -p1.vy];
+	    // Calculate a simple vector to push particles apart
+	    const pushFactor = .5; // Arbitrary factor to control the separation speed
 	
-		// For Euclidean distances, directly use the calculated overlap
-		 const overlap = minDistance - distance;
-		 const adjustmentFactor = overlap / distance; // Normalize based on distance
-		 p1.x += dx * adjustmentFactor;
-		 p1.y += dy * adjustmentFactor;
-		 p2.x -= dx * adjustmentFactor;
-		 p2.y -= dy * adjustmentFactor;
-	}*/
+	    // Avoid directly using dx and dy for velocity adjustments as we're simplifying the approach
+	    // Instead, determine if velocities are moving towards each other and invert them accordingly
+	    if ((p1.vx - p2.vx) * dx + (p1.vy - p2.vy) * dy < 0) {
+	        // Particles are moving towards each other; adjust their velocities
+	        // This condition helps in ensuring that we only invert the velocity when particles are moving towards each other
+	        const tempVx = p1.vx;
+	        const tempVy = p1.vy;
+	        p1.vx = p2.vx;
+	        p1.vy = p2.vy;
+	        p2.vx = tempVx;
+	        p2.vy = tempVy;
+	    }
+	
+	    // Apply a simple overlap correction without detailed directionality
+	    const overlap = .2;
+	    // Ensure particles move away from each other post-collision by adjusting their positions slightly
+	    const adjustX = dx * overlap / distanceSquared * (minDistanceSquared - distanceSquared);
+	    const adjustY = dy * overlap / distanceSquared * (minDistanceSquared - distanceSquared);
+	    
+	    p1.x += adjustX;
+	    p1.y += adjustY;
+	    p2.x -= adjustX;
+	    p2.y -= adjustY;
+	}
+
+
+	// TODO:: test simplified Euclidean collision logic for faster performance but less accurate
+	//collisionLogicEuclidean(p1, p2, distance, minDistance) {
+	//    const dx = p1.x - p2.x;
+	//    const dy = p1.y - p2.y;
+	//
+	//    // Invert velocities for a simple collision effect
+	//    [p1.vx, p2.vx] = [-p2.vx, -p1.vx];
+	//    [p1.vy, p2.vy] = [-p2.vy, -p1.vy];
+	//
+	//	// For Euclidean distances, directly use the calculated overlap
+	//	 const overlap = minDistance - distance;
+	//	 const adjustmentFactor = overlap / distance; // Normalize based on distance
+	//	 p1.x += dx * adjustmentFactor;
+	//	 p1.y += dy * adjustmentFactor;
+	//	 p2.x -= dx * adjustmentFactor;
+	//	 p2.y -= dy * adjustmentFactor;
+	//}
 
     // Handle user interaction
     handleInteraction(x, y) {
