@@ -1,5 +1,5 @@
 class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
-    constructor(numBinsX=10, numBinsY=10, distanceType='hybrid', enablePrecomputeVelocities=true) {
+    constructor(numBinsX=10, numBinsY=10, distanceType='squared', enablePrecomputeVelocities=true) {
         this.particles = [];
         this.bins = {};
 
@@ -10,6 +10,7 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
 		this.numBinsX = numBinsX; // Desired number of bins horizontally
         this.numBinsY = numBinsY; // Desired number of bins vertically
 
+        this.distanceType = 'squared';
         this.distanceMethod = null; 
 		if (distanceType === 'squared') {
 			this.distanceMethodLines = this.getDistanceSquared;
@@ -30,6 +31,7 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
         this.distanceForLines = (distanceType === 'squared' || distanceType === 'hybrid') ? 4900 : 80; //70^2
 
         this.enablePrecomputeVelocities = enablePrecomputeVelocities;
+        //this.collisionThreshold = 1;
 
         this.showBinsBoundaries = false;
 
@@ -271,12 +273,12 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
 	            for (let j = i + 1; j < particles.length; j++) {
 	                const p1 = particles[i];
 	                const p2 = particles[j];
-	                const distance = this.calculateDistance(p1, p2); // Returns squared or Euclidean distance
+	                // Returns squared or Euclidean distance base on instantiation parameters
+	                const distance = this.calculateDistance(p1, p2); 
 	                
-	                let minDistance = (this.distanceType === 'squared') ? p.squaredRadius : p1.radius + p2.radius;
-
-	                // TODO:: improve collision detection for squared distance calculation
-	                if (distance < minDistance) {
+	                let minDistance = (this.distanceType === 'squared') ? p1.squaredRadius : p1.radius + p2.radius;
+	                
+	                if (distance < minDistance) {	                	
 	            	    // Collision detected 
 	            	    this.collisionLogic(p1, p2, distance, minDistance);
 	            	}
@@ -315,68 +317,36 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
 		p2.y -= overlap * Math.sin(angle);
 	}
 
-	// simplified collision logic with distanceSquared for faster performance but less accurate
-	// invert velocities method
+	// simplified collision logic with distanceSquared for faster performance but less accurate then math.sqrt euclidean logic
 	collisionLogicSquared(p1, p2, distanceSquared, minDistanceSquared) {
-	    // Directly invert velocities for bounce
-	    p1.vx = -p1.vx;
-	    p1.vy = -p1.vy;
-	    p2.vx = -p2.vx;
-	    p2.vy = -p2.vy;
-	
-	    // Estimate overlap resolution without sqrt; use a fixed small step
-	    const overlapStep = 0.9; // Arbitrary step for adjustment
-	    
-	    // Calculate directional vector components between particles
 	    const dx = p1.x - p2.x;
 	    const dy = p1.y - p2.y;
 	
-	    // Normalize the direction vector components based on their squared magnitude
-	    // To avoid sqrt, use a relative adjustment based on the ratio of squared distances
-	    const magnitudeSquared = dx * dx + dy * dy;
-	    const adjustX = dx / magnitudeSquared * overlapStep * (minDistanceSquared - distanceSquared);
-	    const adjustY = dy / magnitudeSquared * overlapStep * (minDistanceSquared - distanceSquared);
+	    const dvx = p1.vx - p2.vx;
+	    const dvy = p1.vy - p2.vy;
 	
-	    // Apply position adjustments to separate particles slightly
-	    // Distribute the adjustment between particles to ensure they move apart equally
-	    p1.x += adjustX / 2;
-	    p1.y += adjustY / 2;
-	    p2.x -= adjustX / 2;
-	    p2.y -= adjustY / 2;
-	}	
-
-	// variant2 :: simplified collision logic with distanceSquared for faster performance but less accurate
-	collisionLogicSquaredV2(p1, p2, distanceSquared, minDistanceSquared) {
-	    // Calculate directional vector components between particles
-	    const dx = p1.x - p2.x;
-	    const dy = p1.y - p2.y;
+	    const projectionFactor = (dvx * dx + dvy * dy) / distanceSquared;
 	
-	    // Calculate a simple vector to push particles apart
-	    const pushFactor = .5; // Arbitrary factor to control the separation speed
+	    const changeVx = dx * projectionFactor;
+	    const changeVy = dy * projectionFactor;
 	
-	    // Avoid directly using dx and dy for velocity adjustments as we're simplifying the approach
-	    // Instead, determine if velocities are moving towards each other and invert them accordingly
-	    if ((p1.vx - p2.vx) * dx + (p1.vy - p2.vy) * dy < 0) {
-	        // Particles are moving towards each other; adjust their velocities
-	        // This condition helps in ensuring that we only invert the velocity when particles are moving towards each other
-	        const tempVx = p1.vx;
-	        const tempVy = p1.vy;
-	        p1.vx = p2.vx;
-	        p1.vy = p2.vy;
-	        p2.vx = tempVx;
-	        p2.vy = tempVy;
-	    }
+	    p1.vx -= changeVx;
+	    p1.vy -= changeVy;
+	    p2.vx += changeVx;
+	    p2.vy += changeVy;
 	
-	    // Apply a simple overlap correction without detailed directionality
-	    const overlap = .2;
-	    // Ensure particles move away from each other post-collision by adjusting their positions slightly
-	    const adjustX = dx * overlap / distanceSquared * (minDistanceSquared - distanceSquared);
-	    const adjustY = dy * overlap / distanceSquared * (minDistanceSquared - distanceSquared);
-	    
-	    p1.x += adjustX;
-	    p1.y += adjustY;
-	    p2.x -= adjustX;
-	    p2.y -= adjustY;
+	    // Fixed overlap adjustment
+	    // Determine the direction of the adjustment
+	    const adjustDirectionX = dx < 0 ? -1 : 1;
+	    const adjustDirectionY = dy < 0 ? -1 : 1;
+	    // Fixed amount of separation to apply
+	    const separationAmount = 1; // Choose a small value that works for the simulation
+	
+	    // Apply a fixed separation along the direction vector
+	    p1.x += adjustDirectionX * separationAmount;
+	    p1.y += adjustDirectionY * separationAmount;
+	    p2.x -= adjustDirectionX * separationAmount;
+	    p2.y -= adjustDirectionY * separationAmount;
 	}
 
 
@@ -417,6 +387,7 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
 	
 	            // Apply repulsion to particles within these bins if they're within the radius
 	            particles.forEach(particle => {
+	            	// TODO :: decide if use variable distance type calculation or parametrize it 
 	                const dx = particle.x - x;
 	                const dy = particle.y - y;
 	                const distance = Math.sqrt(dx * dx + dy * dy);
