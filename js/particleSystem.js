@@ -1,5 +1,5 @@
-class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
-    constructor(numBinsX=10, numBinsY=10, distanceType='squared', enablePrecomputeVelocities=true) {
+class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybrid' */
+    constructor(numBinsX=10, numBinsY=10, distanceMethodType='squared', enablePrecomputeVelocities=true) {
         this.particles = [];
         this.bins = {};
 
@@ -10,25 +10,16 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
 		this.numBinsX = numBinsX; // Desired number of bins horizontally
         this.numBinsY = numBinsY; // Desired number of bins vertically
 
-        this.distanceType = 'squared';
-        this.distanceMethod = null; 
-		if (distanceType === 'squared') {
-			this.distanceMethodLines = this.getDistanceSquared;
-			this.distanceMethodCollisions = this.getDistanceSquared;
-			this.collisionLogic = this.collisionLogicSquared;
-		}
-        if (distanceType === 'euclidean') {
-        	this.distanceMethodLines = this.getEuclideanDistance;
-        	this.distanceMethodCollisions =  this.getEuclideanDistance;
-        	this.collisionLogic = this.collisionLogicEuclidean;
-        }
-        if (distanceType === 'hybrid') {
-        	this.distanceMethodLines = this.getDistanceSquared;
-        	this.distanceMethodCollisions =  this.getEuclideanDistance;
-        	this.collisionLogic = this.collisionLogicEuclidean;
-        }
-        //70^2 for 'squared'  || 'hybrid'
-        this.distanceForLines = (distanceType === 'squared' || distanceType === 'hybrid') ? 4900 : 80; //70^2
+        this.distanceMethodType = distanceMethodType; 
+
+        this.distanceMethodLines = null; 
+		this.distanceMethodCollisions = null; 
+		this.collisionLogic = null; 	
+
+		//70^2 for 'squared'  || 'hybrid'
+        this.distanceForLines = (this.distanceMethodType === 'squared' || this.distanceMethodType === 'hybrid') ? 4900 : 80; //70^2
+
+		this.setDistanceOptions(this.distanceMethodType); 
 
         this.enablePrecomputeVelocities = enablePrecomputeVelocities;
         //this.collisionThreshold = 1;
@@ -41,6 +32,29 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
 		}
 
         this.updateBinSize();
+    }
+
+    setDistanceOptions(distanceMethod) {
+    	console.log('setDistanceOptions :: ',distanceMethod);
+    	if (distanceMethod === 'squared') {
+			this.distanceMethodLines = this.getDistanceSquared;
+			this.distanceMethodCollisions = this.getDistanceSquared;
+			this.collisionLogic = this.collisionLogicSquared;
+		}
+        if (distanceMethod === 'euclidean') {
+        	this.distanceMethodLines = this.getEuclideanDistance;
+        	this.distanceMethodCollisions =  this.getEuclideanDistance;
+        	this.collisionLogic = this.collisionLogicEuclidean;
+        }
+        if (distanceMethod === 'hybrid') {
+        	this.distanceMethodLines = this.getDistanceSquared;
+        	this.distanceMethodCollisions =  this.getEuclideanDistance;
+        	this.collisionLogic = this.collisionLogicEuclidean;
+        }
+    }
+
+    setDistanceForLines(distanceForLines) {
+    	this.distanceForLines = distanceForLines;
     }
 
     precomputeParticlesVelocities() {
@@ -82,6 +96,45 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
         this.particles.push(particle);
     }
 
+    // Remove a fixed number of particles from random positions
+	removeRandomParticles(count) {
+	    for (let i = 0; i < count; i++) {
+	        if (this.particles.length > 0) {
+	            const randomIndex = Math.floor(Math.random() * this.particles.length);
+	            this.particles.splice(randomIndex, 1);
+	        } else {
+	            console.log("No more particles to remove.");
+	            break;
+	        }
+	    }
+	}
+
+	// Add a fixed number of particles and shuffle them
+	addAndShuffleParticles(count, xRange, yRange) {
+	    for (let i = 0; i < count; i++) {
+	        const x = Math.random() * xRange; // Replace xRange with the range of x values you desire
+	        const y = Math.random() * yRange; // Replace yRange with the range of y values you desire
+	        //const particle = new Particle(x, y, (this.enablePrecomputeVelocities) ? 'precomputed' : 'dynamic');
+	        this.addParticle(x, y);
+	        //this.particles.push(particle);
+	    }
+	    // Shuffle the particles array
+	    for (let i = this.particles.length - 1; i > 0; i--) {
+	        const j = Math.floor(Math.random() * (i + 1));
+	        [this.particles[i], this.particles[j]] = [this.particles[j], this.particles[i]];
+	    }
+	}
+
+	// Remove a specific particle based on its ID
+	removeParticleById(particleId) {
+	    const index = this.particles.findIndex(particle => particle.id === particleId);
+	    if (index !== -1) {
+	        this.particles.splice(index, 1);
+	    } else {
+	        console.log("Particle with ID " + particleId + " not found.");
+	    }
+	}
+
     // Update system state: particle positions, bin assignments
 	update() {
 	    this.clearBins();
@@ -95,9 +148,12 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
 	}
 
 	// Update the size of the bins based on canvas size
-    updateBinSize() {
-        this.binSizeX = canvas.width / this.numBinsX;
-        this.binSizeY = canvas.height / this.numBinsY;
+    updateBinSize(canvasWidth, canvasHeight) {
+    	this.canvasWidth = canvasWidth;
+    	this.canvasHeight = canvasHeight;
+
+        this.binSizeX = this.canvasWidth / this.numBinsX;
+        this.binSizeY = this.canvasHeight / this.numBinsY;
     }
 
     // Assigns a particle to the appropriate bin using binSizeX and binSizeY for binning logic
@@ -112,6 +168,14 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
 
         this.bins[binId].push(particle);
     }
+
+    // Update system state: particle positions, bin assignments
+	resetParticlesVelocity() {
+	    this.particles.forEach(particle => {
+	        particle.vx = Math.random() * 2 - 1; // Velocity x
+        	particle.vy = Math.random() * 2 - 1; // Velocity y
+	    });
+	}
 
     // Clears the bins for the next update cycle
     clearBins() {
@@ -276,7 +340,7 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
 	                // Returns squared or Euclidean distance base on instantiation parameters
 	                const distance = this.calculateDistance(p1, p2); 
 	                
-	                let minDistance = (this.distanceType === 'squared') ? p1.squaredRadius : p1.radius + p2.radius;
+	                let minDistance = (this.distanceMethodType === 'squared') ? p1.squaredRadius : p1.radius + p2.radius;
 	                
 	                if (distance < minDistance) {	                	
 	            	    // Collision detected 
@@ -401,6 +465,13 @@ class ParticleSystem { /* distanceType = 'squared' || 'euclidean' || 'hybrid' */
 	            });
 	        }
 	    }
+	}
+
+	killAll() {
+		this.clearBins();
+		this.particles = [];
+		this.particles = null;
+
 	}
 /*end of class*/
 }
