@@ -6,6 +6,8 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
         this.canvasWidth = window.innerWidth;
         this.canvasHeight = window.innerHeight;
 
+        this.ctx = null;
+
         // Size of the bins for spatial partitioning
 		this.numBinsX = numBinsX; // Desired number of bins horizontally
         this.numBinsY = numBinsY; // Desired number of bins vertically
@@ -18,14 +20,16 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 
 		//70^2 for 'squared'  || 'hybrid'
         this.distanceForLines = (this.distanceMethodType === 'squared' || this.distanceMethodType === 'hybrid') ? 4900 : 80; //70^2
-        this.minDistanceForLines = 10; //particle radius * 2
+        this.minDistanceForLines; //(this.distanceMethodType === 'squared' || this.distanceMethodType === 'hybrid') ? (this.particleRadius*2) * (this.particleRadius*2) + 1000 : 8000; //70^2; //particle radius * 2
 
+        this.minDistanceForLinesOffset = 15;
 		this.setDistanceOptions(this.distanceMethodType); 
 
         this.enablePrecomputeVelocities = enablePrecomputeVelocities;
         //this.collisionThreshold = 1;
 
         this.showBinsBoundaries = false;
+        this.showSubdividedBins = false;
 
         if (this.enablePrecomputeVelocities) {
         	this.precomputedVelocities = [];
@@ -41,19 +45,19 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 			this.distanceMethodLines = this.getDistanceSquared;
 			this.distanceMethodCollisions = this.getDistanceSquared;
 			this.collisionLogic = this.collisionLogicSquared;
-			this.minDistanceForLines = (this.particleRadius*2) * (this.particleRadius*2); // (particle radius * 2)^2
+			this.minDistanceForLines = (this.particleRadius*2) * (this.particleRadius*2) + (this.minDistanceForLinesOffset * this.minDistanceForLinesOffset); // (particle radius * 2)^2 + offset^2
 		}
         if (distanceMethod === 'euclidean') {
         	this.distanceMethodLines = this.getEuclideanDistance;
         	this.distanceMethodCollisions =  this.getEuclideanDistance;
         	this.collisionLogic = this.collisionLogicEuclidean;
-        	this.minDistanceForLines = this.particleRadius*2; //particle radius * 2
+        	this.minDistanceForLines = (this.particleRadius*2) + this.minDistanceForLinesOffset; //particle radius * 2 + offset
         }
         if (distanceMethod === 'hybrid') {
         	this.distanceMethodLines = this.getDistanceSquared;
         	this.distanceMethodCollisions =  this.getEuclideanDistance;
         	this.collisionLogic = this.collisionLogicEuclidean;
-        	this.minDistanceForLines = this.particleRadius*2; //particle radius * 2
+        	this.minDistanceForLines =  (this.particleRadius*2) + (this.minDistanceForLinesOffset * this.minDistanceForLinesOffset); // particle radius + offset^2
         }
     }
 
@@ -192,6 +196,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 
     // Draw particles and connections
     draw(ctx) {
+    	this.ctx = ctx;
         this.particles.forEach(particle => particle.draw(ctx));
         if (this.showBinsBoundaries) this.drawBinBoundaries(ctx); // Draw the bin boundaries for debugging
         this.drawConnections(ctx);
@@ -305,7 +310,72 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 
 	// Draw connections between close particles including neighboring bins
 	// improved drawing method
-	drawConnections(ctx, reach = 1) {
+	drawConnections(ctx, reach = 1, skipSameBinConnections = false) {
+	    ctx.lineWidth = 1; // Default line width
+	
+	    const linesByColor = new Map();
+	
+	    const addLine = (particleA, particleB, color) => {
+	        if (!linesByColor.has(color)) {
+	            linesByColor.set(color, []);
+	        }
+	        linesByColor.get(color).push({ from: particleA, to: particleB });
+	    };
+	
+	    const neighborOffsets = [];
+	    for (let dx = -reach; dx <= reach; dx++) {
+	        for (let dy = -reach; dy <= reach; dy++) {
+	            neighborOffsets.push([dx, dy]);
+	        }
+	    }
+	
+	    Object.keys(this.bins).forEach(binId => {
+	        const [binX, binY] = binId.split(',').map(Number);
+	
+	        neighborOffsets.forEach(([offsetX, offsetY]) => {
+	            const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
+	            const currentBinParticles = this.bins[binId] || [];
+	            const neighborBinParticles = this.bins[neighborBinId] || [];
+	
+	            currentBinParticles.forEach(particleA => {
+	                neighborBinParticles.forEach(particleB => {
+	                    if (skipSameBinConnections && binId === neighborBinId && particleA !== particleB) {
+	                        // Skip connections within the same bin if skipSameBinConnections is true
+	                        return;
+	                    }
+	
+	                    // Continue with original logic for determining if a line should be drawn
+	                    const distance = this.distanceMethodLines(particleA, particleB);
+	                    
+	                    if (distance >= this.distanceForLines || distance <= this.minDistanceForLines) return;
+	
+	                    const alpha = Math.max(0.1, 1 - distance / this.distanceForLines);
+	                    let color = `rgba(${particleA.originalColorRGB[0]}, ${particleA.originalColorRGB[1]}, ${particleA.originalColorRGB[2]}, ${alpha})`;
+	
+	                    if (particleA.infected || particleB.infected) {
+	                        const effectRGB = particleA.infected ? particleA.effectRGB : particleB.effectRGB;
+	                        color = `rgba(${effectRGB[0]}, ${effectRGB[1]}, ${effectRGB[2]}, ${alpha})`;
+	                    }
+	
+	                    addLine(particleA, particleB, color);
+	                });
+	            });
+	        });
+	    });
+	
+	    // Draw all lines grouped by color
+	    linesByColor.forEach((value, key) => {
+	        ctx.strokeStyle = key;
+	        value.forEach(line => {
+	            ctx.beginPath();
+	            ctx.moveTo(line.from.x, line.from.y);
+	            ctx.lineTo(line.to.x, line.to.y);
+	            ctx.stroke();
+	        });
+	    });
+	}
+
+	drawConnectionsBKP(ctx, reach = 1) {
 	    ctx.lineWidth = 1; // Default line width is set once assuming all lines are the same width
 	
 	    // Initialize a map to group line coordinates by their color
@@ -400,7 +470,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	    }
 	}
 
-	handleCollisions() {
+	handleCollisionsV0() {
 	    for (const binId in this.bins) {
 	        const particles = this.bins[binId];
 	        if (!particles || particles.length < 2) continue;// Skip if bin is empty or has only one particle
@@ -422,6 +492,120 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	            }
 	        }
 	    }
+	}
+
+	handleCollisions() {
+		const particleNumThreshold = 5;
+		const minBinSize = 50;
+	    for (const binId in this.bins) {
+	        const particles = this.bins[binId];
+	        if (!particles || particles.length < 2) continue; // Skip if bin is empty or has only one particle
+	
+	        // Subdivide bin if threshold exceeded and bin size allows
+	        if (particles.length > particleNumThreshold && this.canSubdivide(binId, minBinSize)) {
+	            this.subdivideBin(binId);
+	            continue; // Skip further collision checks in this cycle
+	        }
+	
+	        // Check for collisions only within the same bin
+	        this.checkCollisionsWithinBin(particles);
+	    }
+	}
+	
+    // Method to check if a bin can be subdivided
+	canSubdivide(binId, minBinSizeVal) {
+	    // minimum value for bin size, based on particle diameter
+	    const minBinSize = minBinSizeVal;
+	
+	    // Calculate new potential bin sizes after subdivision
+	    const newBinSizeX = this.binSizeX / 2;
+	    const newBinSizeY = this.binSizeY / 2;
+	
+	    // Check if subdividing the bin would result in bins smaller than the minimum size in both dimensions	    
+	    return newBinSizeX >= minBinSize && newBinSizeY >= minBinSize;
+	}
+
+	subdivideBin(binId) {
+	    const [binX, binY] = binId.split(',').map(Number); 
+	    const particles = this.bins[binId];
+	    const halfBinSizeX = this.binSizeX / 2;
+	    const halfBinSizeY = this.binSizeY / 2;
+	    const startX = binX * this.binSizeX;
+	    const startY = binY * this.binSizeY;
+	
+	    let tempBins = {};
+	    let subdividedBinDetails = [];
+	
+	    const positions = [
+	        [startX, startY],
+	        [startX + halfBinSizeX, startY],
+	        [startX, startY + halfBinSizeY],
+	        [startX + halfBinSizeX, startY + halfBinSizeY],
+	    ];
+	
+	    positions.forEach(([x, y]) => {
+	        const subBinX = Math.floor(x / this.binSizeX);
+	        const subBinY = Math.floor(y / this.binSizeY);
+	        const newBinId = `${subBinX},${subBinY}`;
+	        tempBins[newBinId] = []; // Ensure initialization
+	        subdividedBinDetails.push({ x, y, width: halfBinSizeX, height: halfBinSizeY });
+	    });
+	
+	    // Distribute particles into new temporary bins
+	    particles.forEach(particle => {
+	        const particleX = Math.floor(particle.x / halfBinSizeX) * halfBinSizeX;
+	        const particleY = Math.floor(particle.y / halfBinSizeY) * halfBinSizeY;
+	        const subBinX = Math.floor(particleX / this.binSizeX);
+	        const subBinY = Math.floor(particleY / this.binSizeY);
+	        const newBinId = `${subBinX},${subBinY}`;
+	
+	        if (!tempBins[newBinId]) {
+	            tempBins[newBinId] = [];
+	        }
+	        tempBins[newBinId].push(particle);
+	    });
+	
+	    if (this.showSubdividedBins) {
+	        this.drawSubdividedBinBoundaries(subdividedBinDetails);
+	    }
+	
+	    Object.keys(tempBins).forEach(binId => {
+	        this.checkCollisionsWithinBin(tempBins[binId]);
+	    });
+	}
+	
+	checkCollisionsWithinBin(particles) {
+	    for (let i = 0; i < particles.length; i++) {
+	        for (let j = i + 1; j < particles.length; j++) {
+	            const p1 = particles[i];
+	            const p2 = particles[j];
+	            const distance = this.calculateDistance(p1, p2);
+	            let minDistance = (this.distanceMethodType === 'squared') ? p1.squaredRadius : p1.radius + p2.radius;
+	            
+	            if (distance < minDistance) {
+	                // Collision detected
+	                this.collisionLogic(p1, p2, distance, minDistance);
+	            }
+	        }
+	    }
+	}
+
+	drawSubdividedBinBoundaries(subdividedBinDetails) {
+		if (!this.ctx) return ;
+	    const ctx = this.ctx; // Assuming this is your canvas rendering context
+	    ctx.save(); // Save the current context state
+	
+	    ctx.strokeStyle = 'rgba(255, 255, 255, 1.5)'; // Semi-transparent red for visibility
+	    ctx.lineWidth = 1; // Thin line width for the bin boundaries
+	
+	    // Iterate over the provided subdivided bin details
+	    subdividedBinDetails.forEach(({x, y, width, height}) => {
+	        ctx.beginPath();
+	        ctx.rect(x, y, width, height); // Draw the rectangle for the bin boundary
+	        ctx.stroke();
+	    });
+	
+	    ctx.restore(); // Restore the context state
 	}
 
 	debugInfect(p1, p2) {
