@@ -1,10 +1,10 @@
 class Particle { // adjustSpeed = 'dynamic' || 'precomputed' 
-    constructor(x, y, adjustSpeed='dynamic') {
+    constructor(x, y, radius, adjustSpeed='dynamic') {
         this.x = x;
         this.y = y;
         this.vx = Math.random() * 2 - 1; // Velocity x
         this.vy = Math.random() * 2 - 1; // Velocity y
-        this.radius = 5;
+        this.radius = radius;
         //this.squaredRadius = Math.pow(this.radius, 2);
         this.squaredRadius = (this.radius + this.radius) * (this.radius + this.radius);
 

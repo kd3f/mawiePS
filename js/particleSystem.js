@@ -2,7 +2,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
     constructor(numBinsX=10, numBinsY=10, distanceMethodType='squared', enablePrecomputeVelocities=true) {
         this.particles = [];
         this.bins = {};
-
+        this.particleRadius = 5;
         this.canvasWidth = window.innerWidth;
         this.canvasHeight = window.innerHeight;
 
@@ -41,19 +41,19 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 			this.distanceMethodLines = this.getDistanceSquared;
 			this.distanceMethodCollisions = this.getDistanceSquared;
 			this.collisionLogic = this.collisionLogicSquared;
-			this.minDistanceForLines = 100; // (particle radius * 2)^2
+			this.minDistanceForLines = (this.particleRadius*2) * (this.particleRadius*2); // (particle radius * 2)^2
 		}
         if (distanceMethod === 'euclidean') {
         	this.distanceMethodLines = this.getEuclideanDistance;
         	this.distanceMethodCollisions =  this.getEuclideanDistance;
         	this.collisionLogic = this.collisionLogicEuclidean;
-        	this.minDistanceForLines = 10; //particle radius * 2
+        	this.minDistanceForLines = this.particleRadius*2; //particle radius * 2
         }
         if (distanceMethod === 'hybrid') {
         	this.distanceMethodLines = this.getDistanceSquared;
         	this.distanceMethodCollisions =  this.getEuclideanDistance;
         	this.collisionLogic = this.collisionLogicEuclidean;
-        	this.minDistanceForLines = 10; //particle radius * 2
+        	this.minDistanceForLines = this.particleRadius*2; //particle radius * 2
         }
     }
 
@@ -99,7 +99,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
     // Add particle to system
     addParticle(x, y) {
     	const speedMethod = (this.enablePrecomputeVelocities) ? 'precomputed' : 'dynamic';
-        const particle = new Particle(x, y, speedMethod);
+        const particle = new Particle(x, y, this.particleRadius, speedMethod);
         if (this.enablePrecomputeVelocities) particle.setFindClosestPrecomputedVelocity(this.findClosestPrecomputedVelocity.bind(this));
         this.particles.push(particle);
     }

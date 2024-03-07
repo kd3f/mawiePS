@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() { // document ready 
 
-    // Setup Particle System, Helper functions and anvas setup
+    // Setup Particle System, Helper functions and canvas setup
     // Create and append the canvas
     const canvas = document.createElement('canvas');
     document.body.appendChild(canvas);
@@ -223,15 +223,55 @@ document.addEventListener('DOMContentLoaded', function() { // document ready
     
       return check;
     }
-    
+
     /* dynamic options settings */
+
+    const optionsHtml = `<!-- dynamic settings UI -->
+    <div id="modalOverlay">     
+        <div id="settingsFormContainer">
+            <form id="settings-form">
+                <h2 class="form-title">Distance Type</h2>
+                <div id="distance-method">                  
+                    <label><input type="radio" name="distance" value="euclidean"> Euclidean</label>
+                    <label><input type="radio" name="distance" value="squared" checked> Squared</label>
+                    <label><input type="radio" name="distance" value="hybrid"> Hybrid</label>
+                </div>
+                <h2 class="form-title">Precompute Particle Velocities</h2>
+                <div id="precompute-velocity">
+                    <label><input type="checkbox" id="precompute" checked> Enable</label>
+                </div>
+                <h2 class="form-title">Particle Lines Distance</h2>
+                <div id="particle-lines-distance">
+                    <label>
+                        <input type="range" id="distance-slider" min="0" max="200" value="">
+                        <input type="number" id="distance-number" min="0" max="200" value="">
+                    </label>
+                </div>
+                <h2 class="form-title">Particles Number</h2>
+                <div id="particles-number">
+                    <label>
+                        <input type="range" id="particles-slider" min="0" max="5000" value="1500">
+                        <input type="number" id="particles-number-input" min="0" max="5000" value="1500">
+                    </label>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="settingsIcon">
+        <span>&#9964;</span>
+    </div>
+    <!-- end of dynamic settings UI -->`;
+
+    // Adding the template string to the beginning of the body
+    document.body.insertAdjacentHTML('afterbegin', optionsHtml);
 
     const distanceSlider = document.getElementById('distance-slider');
     const distanceNumber = document.getElementById('distance-number');
     const particlesSlider = document.getElementById('particles-slider');
     const particlesNumberInput = document.getElementById('particles-number-input');
 
-    let previousDistanceMethod = String(distanceMethod);
+    let previousDistanceMethod = String(system.distanceMethod);
 
     // Set fields initial values
     initializeFormFields({
