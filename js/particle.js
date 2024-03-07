@@ -6,7 +6,8 @@ class Particle { // adjustSpeed = 'dynamic' || 'precomputed'
         this.vy = Math.random() * 2 - 1; // Velocity y
         this.radius = 5;
         //this.squaredRadius = Math.pow(this.radius, 2);
-        this.squaredRadius = (this.radius + this.radius) * (this.radius + this.radius)
+        this.squaredRadius = (this.radius + this.radius) * (this.radius + this.radius);
+
         this.color = 'rgba(245, 5, 213, 1)'; //'rgba(255, 255, 255, 1)'; // Default color
         
         this.originalColor = this.color; // Default color

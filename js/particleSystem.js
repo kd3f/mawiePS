@@ -18,6 +18,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 
 		//70^2 for 'squared'  || 'hybrid'
         this.distanceForLines = (this.distanceMethodType === 'squared' || this.distanceMethodType === 'hybrid') ? 4900 : 80; //70^2
+        this.minDistanceForLines = 10; //particle radius * 2
 
 		this.setDistanceOptions(this.distanceMethodType); 
 
@@ -40,21 +41,28 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 			this.distanceMethodLines = this.getDistanceSquared;
 			this.distanceMethodCollisions = this.getDistanceSquared;
 			this.collisionLogic = this.collisionLogicSquared;
+			this.minDistanceForLines = 100; // (particle radius * 2)^2
 		}
         if (distanceMethod === 'euclidean') {
         	this.distanceMethodLines = this.getEuclideanDistance;
         	this.distanceMethodCollisions =  this.getEuclideanDistance;
         	this.collisionLogic = this.collisionLogicEuclidean;
+        	this.minDistanceForLines = 10; //particle radius * 2
         }
         if (distanceMethod === 'hybrid') {
         	this.distanceMethodLines = this.getDistanceSquared;
         	this.distanceMethodCollisions =  this.getEuclideanDistance;
         	this.collisionLogic = this.collisionLogicEuclidean;
+        	this.minDistanceForLines = 10; //particle radius * 2
         }
     }
 
     setDistanceForLines(distanceForLines) {
     	this.distanceForLines = distanceForLines;
+    }
+
+    getParticles() {
+    	return this.particles;
     }
 
     precomputeParticlesVelocities() {
@@ -243,57 +251,122 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	}
 
 	// Draw connections between close particles including neighboring bins
+	//drawConnectionsV1(ctx, reach = 1) {
+	//    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; // Default line color and alpha
+	//    ctx.lineWidth = 1; // Default line width
+	//
+	//    const checkAndDrawLine = (particleA, particleB) => {
+	//        const distance = this.distanceMethodLines(particleA, particleB);
+	//        const maxDistance = this.distanceForLines; // Adjust as needed
+	//        if (distance < maxDistance) {
+	//            const alpha = Math.max(0.1, 1 - distance / maxDistance);
+	//
+	//            const originalLineColor = `rgba(${particleA.originalColorRGB[0]}, ${particleA.originalColorRGB[1]}, ${particleA.originalColorRGB[2]}, ${alpha})`;
+	//            let infectedLineColor = `rgba(0, 255, 255, ${alpha})`;
+	//
+	//            if (particleA.infected) infectedLineColor = `rgba(${particleA.effectRGB[0]}, ${particleA.effectRGB[1]}, ${particleA.effectRGB[2]}, ${alpha})`;
+	//            if (particleB.infected) infectedLineColor = `rgba(${particleB.effectRGB[0]}, ${particleB.effectRGB[1]}, ${particleB.effectRGB[2]}, ${alpha})`;
+	//            
+	//            ctx.strokeStyle = particleA.infected || particleB.infected ? infectedLineColor : originalLineColor;
+	//            //ctx.lineWidth = particleA.infected || particleB.infected ? 1.2 : 1; // Slightly thicker lines for infected state
+	//            ctx.beginPath();
+	//            ctx.moveTo(particleA.x, particleA.y);
+	//            ctx.lineTo(particleB.x, particleB.y);
+	//            ctx.stroke();
+	//        }
+	//    };
+	//
+	//	// Dynamically calculate neighbor offsets based on reach
+	//	const neighborOffsets = [];
+	//	for (let dx = -reach; dx <= reach; dx++) {
+	//	    for (let dy = -reach; dy <= reach; dy++) {
+	//	        neighborOffsets.push([dx, dy]);
+	//	    }
+	//	}
+	//
+	//	// Drawing code, using the dynamically calculated neighborOffsets...
+	//	Object.keys(this.bins).forEach(binId => {
+	//	    const [binX, binY] = binId.split(',').map(Number);
+	//
+	//	    neighborOffsets.forEach(([offsetX, offsetY]) => {
+	//	        const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
+	//	        const currentBinParticles = this.bins[binId] || [];
+	//	        const neighborBinParticles = this.bins[neighborBinId] || [];
+	//
+	//	        currentBinParticles.forEach(particleA => {
+	//	            neighborBinParticles.forEach(particleB => {
+	//	                if (particleA === particleB) return; // Avoid self-comparison
+	//	                checkAndDrawLine(particleA, particleB);
+	//	            });
+	//	        });
+	//	    });
+	//	});
+	//}
+
+	// Draw connections between close particles including neighboring bins
+	// improved drawing method
 	drawConnections(ctx, reach = 1) {
-	    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; // Default line color and alpha
-	    ctx.lineWidth = 1; // Default line width
+	    ctx.lineWidth = 1; // Default line width is set once assuming all lines are the same width
 	
-	    const checkAndDrawLine = (particleA, particleB) => {
-	        const distance = this.distanceMethodLines(particleA, particleB);
-	        const maxDistance = this.distanceForLines; // Adjust as needed
-	        if (distance < maxDistance) {
-	            const alpha = Math.max(0.1, 1 - distance / maxDistance);
-
-	            const originalLineColor = `rgba(${particleA.originalColorRGB[0]}, ${particleA.originalColorRGB[1]}, ${particleA.originalColorRGB[2]}, ${alpha})`;
-	            let infectedLineColor = `rgba(0, 255, 255, ${alpha})`;
-
-	            if (particleA.infected) infectedLineColor = `rgba(${particleA.effectRGB[0]}, ${particleA.effectRGB[1]}, ${particleA.effectRGB[2]}, ${alpha})`;
-	            if (particleB.infected) infectedLineColor = `rgba(${particleB.effectRGB[0]}, ${particleB.effectRGB[1]}, ${particleB.effectRGB[2]}, ${alpha})`;
-	            
-	            ctx.strokeStyle = particleA.infected || particleB.infected ? infectedLineColor : originalLineColor;
-	            //ctx.lineWidth = particleA.infected || particleB.infected ? 1.2 : 1; // Slightly thicker lines for infected state
-	            ctx.beginPath();
-	            ctx.moveTo(particleA.x, particleA.y);
-	            ctx.lineTo(particleB.x, particleB.y);
-	            ctx.stroke();
+	    // Initialize a map to group line coordinates by their color
+	    const linesByColor = new Map();
+	
+	    const addLine = (particleA, particleB, color) => {
+	        if (!linesByColor.has(color)) {
+	            linesByColor.set(color, []);
 	        }
+	        linesByColor.get(color).push({ from: particleA, to: particleB });
 	    };
+	
+	    const neighborOffsets = [];
+	    for (let dx = -reach; dx <= reach; dx++) {
+	        for (let dy = -reach; dy <= reach; dy++) {
+	            neighborOffsets.push([dx, dy]);
+	        }
+	    }
+	
+	    Object.keys(this.bins).forEach(binId => {
+	        const [binX, binY] = binId.split(',').map(Number);
+	
+	        neighborOffsets.forEach(([offsetX, offsetY]) => {
+	            const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
+	            const currentBinParticles = this.bins[binId] || [];
+	            const neighborBinParticles = this.bins[neighborBinId] || [];
+	
+	            currentBinParticles.forEach(particleA => {
+	                neighborBinParticles.forEach(particleB => {
+	                    if (particleA === particleB) return; // Avoid self-comparison 
+	
+	                    const distance = this.distanceMethodLines(particleA, particleB);
+	                    //if (distance >= this.distanceForLines || distance === 0) return;
+						if (distance >= this.distanceForLines || distance <= this.minDistanceForLines) return;
 
-		// Dynamically calculate neighbor offsets based on reach
-		const neighborOffsets = [];
-		for (let dx = -reach; dx <= reach; dx++) {
-		    for (let dy = -reach; dy <= reach; dy++) {
-		        neighborOffsets.push([dx, dy]);
-		    }
-		}
-
-		// Drawing code, using the dynamically calculated neighborOffsets...
-		Object.keys(this.bins).forEach(binId => {
-		    const [binX, binY] = binId.split(',').map(Number);
-
-		    neighborOffsets.forEach(([offsetX, offsetY]) => {
-		        const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
-		        const currentBinParticles = this.bins[binId] || [];
-		        const neighborBinParticles = this.bins[neighborBinId] || [];
-
-		        currentBinParticles.forEach(particleA => {
-		            neighborBinParticles.forEach(particleB => {
-		                if (particleA === particleB) return; // Avoid self-comparison
-		                checkAndDrawLine(particleA, particleB);
-		            });
-		        });
-		    });
-		});
+	                    const alpha = Math.max(0.1, 1 - distance / this.distanceForLines);
+	                    let color = `rgba(${particleA.originalColorRGB[0]}, ${particleA.originalColorRGB[1]}, ${particleA.originalColorRGB[2]}, ${alpha})`;
+	
+	                    if (particleA.infected || particleB.infected) {
+	                        const effectRGB = particleA.infected ? particleA.effectRGB : particleB.effectRGB;
+	                        color = `rgba(${effectRGB[0]}, ${effectRGB[1]}, ${effectRGB[2]}, ${alpha})`;
+	                    }
+	
+	                    addLine(particleA, particleB, color);
+	                });
+	            });
+	        });
+	    });
+	
+	    // Draw all lines grouped by color to minimize state changes
+	    linesByColor.forEach((value, key) => {
+	        ctx.strokeStyle = key;
+	        value.forEach(line => {
+	            ctx.beginPath();
+	            ctx.moveTo(line.from.x, line.from.y);
+	            ctx.lineTo(line.to.x, line.to.y);
+	            ctx.stroke();
+	        });
+	    });
 	}
+
 
     // Calculates the distance between two particles based on the distanceMethod formula choosen at instantiation
     calculateDistance(particleA, particleB) {

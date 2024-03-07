@@ -228,8 +228,6 @@ document.addEventListener('DOMContentLoaded', function() { // document ready
 
     const distanceSlider = document.getElementById('distance-slider');
     const distanceNumber = document.getElementById('distance-number');
-    //const particlesSlider = document.getElementById('particles-slider');
-    //const particlesNumber = document.getElementById('particles-number-input');
     const particlesSlider = document.getElementById('particles-slider');
     const particlesNumberInput = document.getElementById('particles-number-input');
 
@@ -291,16 +289,6 @@ document.addEventListener('DOMContentLoaded', function() { // document ready
         console.log('Particle Lines Distance: ' + distanceNumber.value);
     });
 
-    //particlesSlider.addEventListener('input', function() {
-    //    particlesNumber.value = particlesSlider.value;
-    //    console.log('Particles Number: ' + particlesSlider.value);
-    //});
-//
-    //particlesNumber.addEventListener('input', function() {
-    //    particlesSlider.value = particlesNumber.value;
-    //    console.log('Particles Number: ' + particlesNumber.value);
-    //});
-//
     // Handle radio and checkbox changes
     document.querySelectorAll('input[name="distance"]').forEach(radio => {
         radio.addEventListener('change', function() {
@@ -326,10 +314,16 @@ document.addEventListener('DOMContentLoaded', function() { // document ready
         initPSystemAnimation();
     });
 
+    // Add event listeners
+    particlesSlider.addEventListener('input', syncParticleSettings);
+        particlesSlider.addEventListener('input', function() {
+        syncParticleSettings(this.value); // particlesSlider.value
+        particlesNumberInput.value = system.getParticles().length;
 
+    });
 
     // Sync the slider and the number input
-    function syncParticleSettings() {
+    function syncParticleSettings(value) {
         const desiredAmount = parseInt(particlesSlider.value, 10); // or particlesNumberInput.value, they should be the same
         const currentAmount = system.particles.length;
         const difference = desiredAmount - currentAmount;
@@ -337,23 +331,24 @@ document.addEventListener('DOMContentLoaded', function() { // document ready
         if (difference > 0) {
             // Add particles if desired amount is greater than current amount
             for (let i = 0; i < difference; i++) {
-                // Assuming system.addAndShuffleParticles adds a single particle and shuffles
-                // You might need to adjust the addParticle method to add a single particle without shuffling each time
+                // system.addAndShuffleParticles adds a single particle and shuffles
                 system.addAndShuffleParticles(1, canvas.width, canvas.height); // Replace xRange and yRange with appropriate values
             }
         } else if (difference < 0) {
             // Remove particles if desired amount is less than current amount
             system.removeRandomParticles(Math.abs(difference));
-        }
+        }        
 
-        // Optionally, shuffle once after adding or removing particles
+        // Optionally, shuffle only once after adding or removing particles
         // if system.addAndShuffleParticles doesn't shuffle or if you want to ensure randomness
         // system.shuffleParticles(); // This would be a new method to shuffle particles
     }
 
-    // Add event listeners
-    particlesSlider.addEventListener('input', syncParticleSettings);
-    particlesNumberInput.addEventListener('input', syncParticleSettings);
+    particlesNumberInput.addEventListener('input', function() {
+        particlesSlider.value = this.value;
+        syncParticleSettings(this.value); 
+        console.log('Particle Number: ' + particlesSlider.value);
+    });
 
 // end of document ready    
 });
