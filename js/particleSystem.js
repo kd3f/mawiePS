@@ -30,8 +30,8 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 
         this.minDistanceForLinesOffset = 15; // avoid drawing lines for this distance
         
-        //Todo improve line drawings for high density bins
-        //this.particlesDensityNumberForLines = 10; // number of particles within the same bin to switch logic
+        //Todo :: improve line drawings for high density bins
+        // this.particlesDensityNumberForLines = 10; // number of particles within the same bin to switch logic
 		
 		this.setDistanceOptions(this.distanceMethodType); 
 
@@ -298,7 +298,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	        neighborOffsets.forEach(([offsetX, offsetY]) => {
 	            const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
 	            const currentBinParticles = this.bins[binId] || [];
-	            const currentBinParticlesNum = currentBinParticles.length;
+	            //const currentBinParticlesNum = currentBinParticles.length;
 	            const neighborBinParticles = this.bins[neighborBinId] || [];
 	
 	            currentBinParticles.forEach(particleA => {
@@ -310,8 +310,13 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	
 	                    // Continue with original logic for determining if a line should be drawn
 	                    const distance = this.distanceMethodLines(particleA, particleB);
+
+	                    // todo :: improve fps by avoiding drawing when too high density
+	                    //const offset = this.particlesDensityNumberForLines * currentBinParticlesNum +1000;
+	                    //like:
+	                    //if (distance >= this.distanceForLines - offset || distance <= this.minDistanceForLines + offset) return;
 	
-	                    if (distance >= this.distanceForLines || distance <= this.minDistanceForLines) return;
+	                    if (distance >= this.distanceForLines  || distance <= this.minDistanceForLines ) return;
 	
 	                    const alpha = Math.max(0.1, 1 - distance / this.distanceForLines);
 	                    let color = `rgba(${particleA.originalColorRGB[0]}, ${particleA.originalColorRGB[1]}, ${particleA.	originalColorRGB[2]}, ${alpha})`;
