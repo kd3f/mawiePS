@@ -256,59 +256,6 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	}
 
 	// Draw connections between close particles including neighboring bins
-	//drawConnectionsV1(ctx, reach = 1) {
-	//    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; // Default line color and alpha
-	//    ctx.lineWidth = 1; // Default line width
-	//
-	//    const checkAndDrawLine = (particleA, particleB) => {
-	//        const distance = this.distanceMethodLines(particleA, particleB);
-	//        const maxDistance = this.distanceForLines; // Adjust as needed
-	//        if (distance < maxDistance) {
-	//            const alpha = Math.max(0.1, 1 - distance / maxDistance);
-	//
-	//            const originalLineColor = `rgba(${particleA.originalColorRGB[0]}, ${particleA.originalColorRGB[1]}, ${particleA.originalColorRGB[2]}, ${alpha})`;
-	//            let infectedLineColor = `rgba(0, 255, 255, ${alpha})`;
-	//
-	//            if (particleA.infected) infectedLineColor = `rgba(${particleA.effectRGB[0]}, ${particleA.effectRGB[1]}, ${particleA.effectRGB[2]}, ${alpha})`;
-	//            if (particleB.infected) infectedLineColor = `rgba(${particleB.effectRGB[0]}, ${particleB.effectRGB[1]}, ${particleB.effectRGB[2]}, ${alpha})`;
-	//            
-	//            ctx.strokeStyle = particleA.infected || particleB.infected ? infectedLineColor : originalLineColor;
-	//            //ctx.lineWidth = particleA.infected || particleB.infected ? 1.2 : 1; // Slightly thicker lines for infected state
-	//            ctx.beginPath();
-	//            ctx.moveTo(particleA.x, particleA.y);
-	//            ctx.lineTo(particleB.x, particleB.y);
-	//            ctx.stroke();
-	//        }
-	//    };
-	//
-	//	// Dynamically calculate neighbor offsets based on reach
-	//	const neighborOffsets = [];
-	//	for (let dx = -reach; dx <= reach; dx++) {
-	//	    for (let dy = -reach; dy <= reach; dy++) {
-	//	        neighborOffsets.push([dx, dy]);
-	//	    }
-	//	}
-	//
-	//	// Drawing code, using the dynamically calculated neighborOffsets...
-	//	Object.keys(this.bins).forEach(binId => {
-	//	    const [binX, binY] = binId.split(',').map(Number);
-	//
-	//	    neighborOffsets.forEach(([offsetX, offsetY]) => {
-	//	        const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
-	//	        const currentBinParticles = this.bins[binId] || [];
-	//	        const neighborBinParticles = this.bins[neighborBinId] || [];
-	//
-	//	        currentBinParticles.forEach(particleA => {
-	//	            neighborBinParticles.forEach(particleB => {
-	//	                if (particleA === particleB) return; // Avoid self-comparison
-	//	                checkAndDrawLine(particleA, particleB);
-	//	            });
-	//	        });
-	//	    });
-	//	});
-	//}
-
-	// Draw connections between close particles including neighboring bins
 	// improved drawing method 
 	// skipSameBinConnections could be helpful for really small bins
 	//drawConnections(ctx, reach = 1, skipSameBinConnections = false) {
@@ -475,30 +422,6 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	    } else {
 	        console.error('Invalid RGBA color string:', rgbaColor);
 	        return rgbaColor; // Return the original string if it doesn't match the expected format
-	    }
-	}
-
-	handleCollisionsV0() {
-	    for (const binId in this.bins) {
-	        const particles = this.bins[binId];
-	        if (!particles || particles.length < 2) continue;// Skip if bin is empty or has only one particle
-
-			// Check for collisions only within the same bin
-	        for (let i = 0; i < particles.length; i++) {
-	            for (let j = i + 1; j < particles.length; j++) {
-	                const p1 = particles[i];
-	                const p2 = particles[j];
-	                // Returns squared or Euclidean distance base on instantiation parameters
-	                const distance = this.calculateDistance(p1, p2); 
-	                
-	                let minDistance = (this.distanceMethodType === 'squared') ? p1.squaredRadius : p1.radius + p2.radius;
-	                
-	                if (distance < minDistance) {	                	
-	            	    // Collision detected 
-	            	    this.collisionLogic(p1, p2, distance, minDistance);
-	            	}
-	            }
-	        }
 	    }
 	}
 
