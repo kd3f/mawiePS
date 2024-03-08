@@ -2,6 +2,12 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
     constructor(numBinsX=10, numBinsY=10, distanceMethodType='squared', enablePrecomputeVelocities=true) {
         this.particles = [];
         this.bins = {};
+        
+        this.subdividedBins = null;
+        
+        this.subBinParticleNumThreshold = 5;
+		this.subBinMinBinSize = 25;
+
         this.particleRadius = 5;
         this.canvasWidth = window.innerWidth;
         this.canvasHeight = window.innerHeight;
@@ -326,72 +332,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	            ctx.stroke();
 	        });
 	    });
-	}
-
-	drawConnectionsGOOD1(ctx, reach = 1, skipSameBinConnections = false) {
-	    ctx.lineWidth = 1; // Default line width
-	
-	    const linesByColor = new Map();
-	
-	    const addLine = (particleA, particleB, color) => {
-	        if (!linesByColor.has(color)) {
-	            linesByColor.set(color, []);
-	        }
-	        linesByColor.get(color).push({ from: particleA, to: particleB });
-	    };
-	
-	    const neighborOffsets = [];
-	    for (let dx = -reach; dx <= reach; dx++) {
-	        for (let dy = -reach; dy <= reach; dy++) {
-	            neighborOffsets.push([dx, dy]);
-	        }
-	    }
-	
-	    Object.keys(this.bins).forEach(binId => {
-	        const [binX, binY] = binId.split(',').map(Number);
-	
-	        neighborOffsets.forEach(([offsetX, offsetY]) => {
-	            const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
-	            const currentBinParticles = this.bins[binId] || [];
-	            const neighborBinParticles = this.bins[neighborBinId] || [];
-	
-	            currentBinParticles.forEach(particleA => {
-	                neighborBinParticles.forEach(particleB => {
-	                    if (skipSameBinConnections && binId === neighborBinId && particleA !== particleB) {
-	                        // Skip connections within the same bin if skipSameBinConnections is true
-	                        return;
-	                    }
-	
-	                    // Continue with original logic for determining if a line should be drawn
-	                    const distance = this.distanceMethodLines(particleA, particleB);
-	                    
-	                    if (distance >= this.distanceForLines || distance <= this.minDistanceForLines) return;
-	
-	                    const alpha = Math.max(0.1, 1 - distance / this.distanceForLines);
-	                    let color = `rgba(${particleA.originalColorRGB[0]}, ${particleA.originalColorRGB[1]}, ${particleA.originalColorRGB[2]}, ${alpha})`;
-	
-	                    if (particleA.infected || particleB.infected) {
-	                        const effectRGB = particleA.infected ? particleA.effectRGB : particleB.effectRGB;
-	                        color = `rgba(${effectRGB[0]}, ${effectRGB[1]}, ${effectRGB[2]}, ${alpha})`;
-	                    }
-	
-	                    addLine(particleA, particleB, color);
-	                });
-	            });
-	        });
-	    });
-	
-	    // Draw all lines grouped by color
-	    linesByColor.forEach((value, key) => {
-	        ctx.strokeStyle = key;
-	        value.forEach(line => {
-	            ctx.beginPath();
-	            ctx.moveTo(line.from.x, line.from.y);
-	            ctx.lineTo(line.to.x, line.to.y);
-	            ctx.stroke();
-	        });
-	    });
-	}
+	}	
 
     // Calculates the distance between two particles based on the distanceMethod formula choosen at instantiation
     calculateDistance(particleA, particleB) {
@@ -426,8 +367,8 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	}
 
 	handleCollisions() {
-		const particleNumThreshold = 5;
-		const minBinSize = 50;
+		const particleNumThreshold = this.subBinParticleNumThreshold;
+		const minBinSize = this.subBinMinBinSize;
 	    for (const binId in this.bins) {
 	        const particles = this.bins[binId];
 	        if (!particles || particles.length < 2) continue; // Skip if bin is empty or has only one particle
@@ -464,7 +405,8 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	    const startX = binX * this.binSizeX;
 	    const startY = binY * this.binSizeY;
 	
-	    let tempBins = {};
+	    //let tempBins = {};
+	    this.subdividedBins = {};
 	    let subdividedBinDetails = [];
 	
 	    const positions = [
@@ -478,7 +420,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	        const subBinX = Math.floor(x / this.binSizeX);
 	        const subBinY = Math.floor(y / this.binSizeY);
 	        const newBinId = `${subBinX},${subBinY}`;
-	        tempBins[newBinId] = []; // Ensure initialization
+	        this.subdividedBins[newBinId] = []; // Ensure initialization
 	        subdividedBinDetails.push({ x, y, width: halfBinSizeX, height: halfBinSizeY });
 	    });
 	
@@ -490,18 +432,18 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	        const subBinY = Math.floor(particleY / this.binSizeY);
 	        const newBinId = `${subBinX},${subBinY}`;
 	
-	        if (!tempBins[newBinId]) {
-	            tempBins[newBinId] = [];
+	        if (!this.subdividedBins[newBinId]) {
+	            this.subdividedBins[newBinId] = [];
 	        }
-	        tempBins[newBinId].push(particle);
+	        this.subdividedBins[newBinId].push(particle);
 	    });
 	
 	    if (this.showSubdividedBins) {
 	        this.drawSubdividedBinBoundaries(subdividedBinDetails);
 	    }
 	
-	    Object.keys(tempBins).forEach(binId => {
-	        this.checkCollisionsWithinBin(tempBins[binId]);
+	    Object.keys(this.subdividedBins).forEach(binId => {
+	        this.checkCollisionsWithinBin(this.subdividedBins[binId]);
 	    });
 	}
 	

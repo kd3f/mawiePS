@@ -134,7 +134,7 @@ class ParticleSystemManager {
         // particleDensity represents the number of particles per unit area
     
         // Define minimum and maximum bin sizes (in pixels)
-        const minBinSize = 25; // Minimum practical bin size
+        const minBinSize = 50; // Minimum practical bin size
         const maxBinSize = 100; // Maximum practical bin size to avoid too large bins
     
         // Screen dimensions and orientation
