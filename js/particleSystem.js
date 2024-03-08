@@ -26,9 +26,13 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 
 		//70^2 for 'squared'  || 'hybrid'
         this.distanceForLines = (this.distanceMethodType === 'squared' || this.distanceMethodType === 'hybrid') ? 4900 : 80; //70^2
-        this.minDistanceForLines; //(this.distanceMethodType === 'squared' || this.distanceMethodType === 'hybrid') ? (this.particleRadius*2) * (this.particleRadius*2) + 1000 : 8000; //70^2; //particle radius * 2
+        this.minDistanceForLines; 
 
-        this.minDistanceForLinesOffset = 15;
+        this.minDistanceForLinesOffset = 15; // avoid drawing lines for this distance
+        
+        //Todo improve line drawings for high density bins
+        //this.particlesDensityNumberForLines = 10; // number of particles within the same bin to switch logic
+		
 		this.setDistanceOptions(this.distanceMethodType); 
 
         this.enablePrecomputeVelocities = enablePrecomputeVelocities;
@@ -294,6 +298,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	        neighborOffsets.forEach(([offsetX, offsetY]) => {
 	            const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
 	            const currentBinParticles = this.bins[binId] || [];
+	            const currentBinParticlesNum = currentBinParticles.length;
 	            const neighborBinParticles = this.bins[neighborBinId] || [];
 	
 	            currentBinParticles.forEach(particleA => {
