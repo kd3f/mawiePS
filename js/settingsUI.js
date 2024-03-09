@@ -172,8 +172,9 @@ class SettingsUI {
         } else if (difference < 0) {
             // Remove particles if desired amount is less than current amount
             this.system.removeRandomParticles(Math.abs(difference));
-        }        
+        }
 
+        this.manager.particleCount = this.system.particles.length;
         // Optionally, shuffle only once after adding or removing particles
         // if system.addAndShuffleParticles doesn't shuffle or if you want to ensure randomness
         // system.shuffleParticles(); // This would be a new method to shuffle particles

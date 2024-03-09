@@ -31,7 +31,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
         this.minDistanceForLinesOffset = 15; // avoid drawing lines for this distance
         
         //Todo :: improve line drawings for high density bins
-        // this.particlesDensityNumberForLines = 10; // number of particles within the same bin to switch logic
+        this.particlesDensityNumberForLines = 2500; // number of particles within the same bin to switch logic
 		
 		this.setDistanceOptions(this.distanceMethodType); 
 
@@ -268,8 +268,66 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	// Draw connections between close particles including neighboring bins
 	// improved drawing method 
 	// skipSameBinConnections could be helpful for really small bins
-	//drawConnections(ctx, reach = 1, skipSameBinConnections = false) {
 	drawConnections(ctx, reach = 1) {
+	    // Use a fixed color and alpha for close groups
+	    const fixedColor = 'rgba(245, 5, 213, 0.35)'; // Example: white with 50% opacity
+	
+	    const linesByColor = new Map();
+	    const addLine = (particleA, particleB, color) => {
+	        if (!linesByColor.has(color)) {
+	            linesByColor.set(color, []);
+	        }
+	        linesByColor.get(color).push({ from: particleA, to: particleB });
+	    };
+	
+	    const neighborOffsets = this.calculateNeighborOffsets(reach);
+	
+	    Object.keys(this.bins).forEach(binId => {
+	        const [binX, binY] = binId.split(',').map(Number);
+	
+	        neighborOffsets.forEach(([offsetX, offsetY]) => {
+	            const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
+	            const currentBinParticles = this.bins[binId] || [];
+	            const neighborBinParticles = this.bins[neighborBinId] || [];
+	
+	            currentBinParticles.forEach(particleA => {
+	                neighborBinParticles.forEach(particleB => {
+	                    if (particleA === particleB) return;
+	
+	                    const distance = this.distanceMethodLines(particleA, particleB);
+	                    if (distance > this.distanceForLines || distance < this.minDistanceForLines) return;
+						
+						const alpha = Math.max(0.1, 1 - distance / this.distanceForLines);
+						let color = `rgba(${particleA.originalColorRGB[0]}, ${particleA.originalColorRGB[1]}, ${particleA.	originalColorRGB[2]}, ${alpha})`;
+
+	                    // For closely packed particles, use a fixed color
+	                    color = distance <= this.particlesDensityNumberForLines ? fixedColor : color;
+	
+	                    if (particleA.infected || particleB.infected) {
+	                    	const effectRGB = particleA.infected ? particleA.effectRGB : particleB.effectRGB;
+	                        color = `rgba(${effectRGB[0]}, ${effectRGB[1]}, ${effectRGB[2]}, ${alpha})`;
+	                    }
+	
+	                    addLine(particleA, particleB, color);
+	                });
+	            });
+	        });
+	    });
+	
+	    // Draw all lines grouped by color
+	    linesByColor.forEach((lines, color) => {
+	        ctx.strokeStyle = color;
+	        lines.forEach(({from, to}) => {
+	            ctx.beginPath();
+	            ctx.moveTo(from.x, from.y);
+	            ctx.lineTo(to.x, to.y);
+	            ctx.stroke();
+	        });
+	    });
+	}
+
+	//drawConnections(ctx, reach = 1, skipSameBinConnections = false) {
+	drawConnectionsLAST(ctx, reach = 1) {
 		if (this.distanceForLines <= this.particleRadius + this.particleRadius) return; 
 	    ctx.lineWidth = 1; // Default line width
 	
@@ -282,16 +340,9 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	        linesByColor.get(color).push({ from: particleA, to: particleB });
 	    };
 	
-	    // Optimized neighbor offsets to avoid unnecessary checks
-	    const neighborOffsets = [];
-	    for (let dx = -reach; dx <= reach; dx++) {
-	        for (let dy = -reach; dy <= reach; dy++) {
-	            // Skip the offset for the same bin if skipSameBinConnections is true
-	            //if (skipSameBinConnections && dx === 0 && dy === 0) continue;
-	            neighborOffsets.push([dx, dy]);
-	        }
-	    }
-	
+	    // Define neighbor offsets
+		const neighborOffsets = this.calculateNeighborOffsets(reach); //can use flag skipSameBinConnections
+
 	    Object.keys(this.bins).forEach(binId => {
 	        const [binX, binY] = binId.split(',').map(Number);
 	
@@ -311,7 +362,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	                    // Continue with original logic for determining if a line should be drawn
 	                    const distance = this.distanceMethodLines(particleA, particleB);
 
-	                    // todo :: improve fps by avoiding drawing when too high density
+	                    // todo :: improve fps by change drawing logic when too high density
 	                    //const offset = this.particlesDensityNumberForLines * currentBinParticlesNum +1000;
 	                    //like:
 	                    //if (distance >= this.distanceForLines - offset || distance <= this.minDistanceForLines + offset) return;
@@ -343,6 +394,21 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	        });
 	    });
 	}	
+
+
+	calculateNeighborOffsets(reach, skipSameBinConnections=false) {
+	    let neighborOffsets = [];
+	    for (let dx = -reach; dx <= reach; dx++) {
+	        for (let dy = -reach; dy <= reach; dy++) {
+	        	// Skip the offset for the same bin if skipSameBinConnections is true
+		    	//if (skipSameBinConnections && dx === 0 && dy === 0) continue;
+	            neighborOffsets.push([dx, dy]);
+	        }
+	    }
+	    return neighborOffsets;
+	}
+
+
 
     // Calculates the distance between two particles based on the distanceMethod formula choosen at instantiation
     calculateDistance(particleA, particleB) {
