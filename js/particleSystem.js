@@ -4,6 +4,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
         this.bins = {};
         
         this.subdividedBins = null;
+        //this.overcrowdedBins = new Set(); // To keep track of overcrowded subdividedBins
         
         this.subBinParticleNumThreshold = 5;
 		this.subBinMinBinSize = 25;
@@ -159,6 +160,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 
     // Update system state: particle positions, bin assignments
 	update() {
+
 	    this.clearBins();
 	    this.particles.forEach(particle => {
 	        particle.update(this.canvasWidth, this.canvasHeight);
@@ -169,6 +171,8 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	    this.handleCollisions();
 
 	    // TODO :: try to find away to avoid high particles concentration in current bin or sub bin
+		//this.assessOvercrowding(40);
+		//this.handleOvercrowdedBins();
 
 		//if(this.bins) {
 		//	// Iterate over each subdivided bin by its ID
@@ -189,8 +193,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 		//	  if (particles.length >= 5) this.applyEffectToBinParticles(particles, 2, null);
 		//	  
 		//	});
-		//}
-	     
+		//}	     
 	}
 
 	// Update the size of the bins based on canvas size
@@ -214,6 +217,49 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 
         this.bins[binId].push(particle);
     }
+
+	//// Assess and mark overcrowded bins
+    //assessOvercrowding(threshold) {
+    //    Object.entries(this.subdividedBins).forEach(([binId, particles]) => {
+    //        if (particles.length > threshold) {
+    //            this.overcrowdedBins.add(binId);
+//
+    //            // Also consider neighboring bins
+    //            this.addNeighboringBinsToOvercrowdedList(binId);
+    //        }
+    //    });
+    //}
+//
+    //// Add neighboring bins of an overcrowded bin to the list
+    //addNeighboringBinsToOvercrowdedList(binId) {
+    //    const [binX, binY] = binId.split(',').map(Number);
+    //    const neighborOffsets = [
+    //        [-1, -1], [-1, 0], [-1, 1],
+    //        [0, -1], /* [0, 0], */ [0, 1],
+    //        [1, -1], [1, 0], [1, 1]
+    //    ];
+//
+    //    neighborOffsets.forEach(([dx, dy]) => {
+    //        const neighborId = `${binX + dx},${binY + dy}`;
+    //        if (this.subdividedBins[neighborId]) {
+    //            this.overcrowdedBins.add(neighborId);
+    //        }
+    //    });
+    //}
+//
+    //// Placeholder function to handle overcrowded bins
+    //handleOvercrowdedBins() {
+    //    this.overcrowdedBins.forEach(binId => {
+    //        const particles = this.subdividedBins[binId];
+    //        // Placeholder functionality: apply effect, redistribute particles, etc.
+    //        //console.log(particles);
+    //    	// applyEffectToBinParticles(particles, effectStrength, infect = false)
+	//		this.applyEffectToBinParticles(particles, 2, true);
+    //    });
+//
+    //    // Clear the set after handling to prepare for the next cycle
+    //    this.overcrowdedBins.clear();
+    //}
 
     // Update system state: particle positions, bin assignments
 	resetParticlesVelocity() {
@@ -472,6 +518,12 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	    }
 	
 	    Object.keys(this.subdividedBins).forEach(binId => {
+	    	//console.log(this.subdividedBins[binId].length);
+	    	// TODO logic to avoid clustering
+	    	//if (this.subdividedBins[binId].length >= 32) {
+	    	//	this.applyEffectToBinParticles(this.subdividedBins[binId], .6, false);
+	    	//	return;
+	    	//}
 	        this.checkCollisionsWithinBin(this.subdividedBins[binId]);
 	    });
 	}
