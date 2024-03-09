@@ -297,7 +297,8 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	                    const distance = this.distanceMethodLines(particleA, particleB);
 	                    if (distance > this.distanceForLines || distance < this.minDistanceForLines) return;
 						
-						const alpha = Math.max(0.1, 1 - distance / this.distanceForLines);
+						const alpha = Math.max(0.1, 1 - distance / this.distanceForLines).toFixed(2);
+						
 						let color = `rgba(${particleA.originalColorRGB[0]}, ${particleA.originalColorRGB[1]}, ${particleA.	originalColorRGB[2]}, ${alpha})`;
 
 	                    // For closely packed particles, use a fixed color
