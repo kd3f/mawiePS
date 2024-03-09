@@ -3,7 +3,7 @@ Binned Particle System
 
 This project implements an advanced particle system using JavaScript, featuring dynamic interactions, collision handling, and mobile responsiveness. It's designed for web developers interested in adding interactive, visually appealing particle effects to their web applications.
 
-This project was inspired by visual artists simon geilfus and yannick jacquet on theyr amazing work: paleodictyon bacteria projected onto centre pompidou metz [reference link](https://www.designboom.com/art/markings-of-paleodictyon-bacteria-projected-onto-centre-pompidou-metz/)
+This project was inspired by visual artists Simon Geilfus and Yannick Jacquet on their amazing work: Paleodictyon bacteria projected onto centre Pompidou Metz [reference link](https://www.designboom.com/art/markings-of-paleodictyon-bacteria-projected-onto-centre-pompidou-metz/)
 
 Features
 --------
