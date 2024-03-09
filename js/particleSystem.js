@@ -337,10 +337,10 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 
 	// Draw connections between close particles including neighboring bins
 	// improved drawing method 
-	// skipSameBinConnections could be helpful for really small bins
+	// skipSameBinConnections could be helpful for really small bins check comments
 	drawConnections(ctx, reach = 1) {
 	    // Use a fixed color and alpha for close groups
-	    const fixedColor = 'rgba(245, 5, 213, 0.35)'; // Example: white with 50% opacity
+	    const fixedColor = 'rgba(245, 5, 213, 0.5)'; // Example: white with 50% opacity
 	
 	    const linesByColor = new Map();
 	    const addLine = (particleA, particleB, color) => {
@@ -367,7 +367,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	                    const distance = this.distanceMethodLines(particleA, particleB);
 	                    if (distance > this.distanceForLines || distance < this.minDistanceForLines) return;
 						
-						const alpha = Math.max(0.1, 1 - distance / this.distanceForLines).toFixed(2);
+						const alpha = Math.max(0.1, 1 - distance / this.distanceForLines).toFixed(1);
 						
 						let color = `rgba(${particleA.originalColorRGB[0]}, ${particleA.originalColorRGB[1]}, ${particleA.	originalColorRGB[2]}, ${alpha})`;
 
