@@ -12,4 +12,9 @@ Features
 *   **Collision Handling**: Implement efficient collision detection and response mechanisms to simulate realistic particle interactions.
 *   **Mobile Responsiveness**: Automatically adjust particle count and behavior based on the device's capabilities, ensuring a smooth experience across desktop and mobile devices.
 *   **Performance Optimization**: Utilize spatial partitioning and other optimization techniques to maintain high performance even with a large number of particles.
-*   **FPS Debugging: Include an option to display the current frames per second (FPS), aiding in performance tuning and debugging.
+*   **FPS Debugging**: Include an option to display the current frames per second (FPS), aiding in performance tuning and debugging.
+
+Demo
+--------
+
+This demo should always reflect the main optimization changes [Mawie :: kd3^f](https://kd3f.com/projects/mawiePS/)
