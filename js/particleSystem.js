@@ -166,7 +166,31 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	        this.assignToBin(particle);
 	    });
 
-	    this.handleCollisions(); 
+	    this.handleCollisions();
+
+	    // TODO :: try to find away to avoid high particles concentration in current bin or sub bin
+
+		//if(this.bins) {
+		//	// Iterate over each subdivided bin by its ID
+		//	Object.keys(this.bins).forEach(binId => {
+		//	  // Access the array of particles for the current bin
+		//	  const particles = this.bins[binId];
+		//	  // applyEffectToBinParticles(particles, effectStrength, infect = null)
+		//	  if (particles.length >= 35) this.applyEffectToBinParticles(particles, 1, true);		  
+		//	});
+		//}
+		    
+		//if(this.subdividedBins) {
+		//	// Iterate over each subdivided bin by its ID
+		//	Object.keys(this.subdividedBins).forEach(binId => {
+		//	  // Access the array of particles for the current subbin
+		//	  const particles = this.subdividedBins[binId];
+		//	  // applyEffectToBinParticles(particles, effectStrength, additionalEffect = null)
+		//	  if (particles.length >= 5) this.applyEffectToBinParticles(particles, 2, null);
+		//	  
+		//	});
+		//}
+	     
 	}
 
 	// Update the size of the bins based on canvas size
@@ -280,7 +304,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	        linesByColor.get(color).push({ from: particleA, to: particleB });
 	    };
 	
-	    const neighborOffsets = this.calculateNeighborOffsets(reach);
+	    const neighborOffsets = this.calculateNeighborOffsets(reach); // skipSameBinConnections=false commented in neighbor method
 	
 	    Object.keys(this.bins).forEach(binId => {
 	        const [binX, binY] = binId.split(',').map(Number);
@@ -327,76 +351,6 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	    });
 	}
 
-	//drawConnections(ctx, reach = 1, skipSameBinConnections = false) {
-	drawConnectionsLAST(ctx, reach = 1) {
-		if (this.distanceForLines <= this.particleRadius + this.particleRadius) return; 
-	    ctx.lineWidth = 1; // Default line width
-	
-	    const linesByColor = new Map();
-	
-	    const addLine = (particleA, particleB, color) => {
-	        if (!linesByColor.has(color)) {
-	            linesByColor.set(color, []);
-	        }
-	        linesByColor.get(color).push({ from: particleA, to: particleB });
-	    };
-	
-	    // Define neighbor offsets
-		const neighborOffsets = this.calculateNeighborOffsets(reach); //can use flag skipSameBinConnections
-
-	    Object.keys(this.bins).forEach(binId => {
-	        const [binX, binY] = binId.split(',').map(Number);
-	
-	        neighborOffsets.forEach(([offsetX, offsetY]) => {
-	            const neighborBinId = `${binX + offsetX},${binY + offsetY}`;
-	            const currentBinParticles = this.bins[binId] || [];
-	            //const currentBinParticlesNum = currentBinParticles.length;
-	            const neighborBinParticles = this.bins[neighborBinId] || [];
-	
-	            currentBinParticles.forEach(particleA => {
-	                neighborBinParticles.forEach(particleB => {
-	                    if (particleA === particleB) {
-	                        // Ensure we do not compare a particle with itself
-	                        return;
-	                    }
-	
-	                    // Continue with original logic for determining if a line should be drawn
-	                    const distance = this.distanceMethodLines(particleA, particleB);
-
-	                    // todo :: improve fps by change drawing logic when too high density
-	                    //const offset = this.particlesDensityNumberForLines * currentBinParticlesNum +1000;
-	                    //like:
-	                    //if (distance >= this.distanceForLines - offset || distance <= this.minDistanceForLines + offset) return;
-	
-	                    if (distance >= this.distanceForLines  || distance <= this.minDistanceForLines ) return;
-	
-	                    const alpha = Math.max(0.1, 1 - distance / this.distanceForLines);
-	                    let color = `rgba(${particleA.originalColorRGB[0]}, ${particleA.originalColorRGB[1]}, ${particleA.	originalColorRGB[2]}, ${alpha})`;
-	
-	                    if (particleA.infected || particleB.infected) {
-	                        const effectRGB = particleA.infected ? particleA.effectRGB : particleB.effectRGB;
-	                        color = `rgba(${effectRGB[0]}, ${effectRGB[1]}, ${effectRGB[2]}, ${alpha})`;
-	                    }
-	
-	                    addLine(particleA, particleB, color);
-	                });
-	            });
-	        });
-	    });
-	
-	    // Draw all lines grouped by color
-	    linesByColor.forEach((value, key) => {
-	        ctx.strokeStyle = key;
-	        value.forEach(line => {
-	            ctx.beginPath();
-	            ctx.moveTo(line.from.x, line.from.y);
-	            ctx.lineTo(line.to.x, line.to.y);
-	            ctx.stroke();
-	        });
-	    });
-	}	
-
-
 	calculateNeighborOffsets(reach, skipSameBinConnections=false) {
 	    let neighborOffsets = [];
 	    for (let dx = -reach; dx <= reach; dx++) {
@@ -408,8 +362,6 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	    }
 	    return neighborOffsets;
 	}
-
-
 
     // Calculates the distance between two particles based on the distanceMethod formula choosen at instantiation
     calculateDistance(particleA, particleB) {
@@ -558,15 +510,6 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	    ctx.restore(); // Restore the context state
 	}
 
-	debugInfect(p1, p2) {
-		p1.effectRGB = [255, 5, 5];
-		p1.effectColor = 'rgba(255, 5, 5, 1)';
-		p1.infect(); 
-		p2.effectRGB = [255, 5, 5];		
-		p1.effectColor = 'rgba(255, 5, 5, 1)';
-		p2.infect();
-	}
-
 	collisionLogicEuclidean(p1, p2, distance, minDistance) {
 		const dx = p1.x - p2.x;
 		const dy = p1.y - p2.y;
@@ -639,6 +582,29 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	//	 p2.y -= dy * adjustmentFactor;
 	//}
 
+	applyEffectToBinParticles(particles, effectStrength, infect = false) {
+	    if (particles.length === 0) return;
+	
+	    // Simply apply the effect to each particle
+	    particles.forEach(particle => {
+	        // determine the direction or vector of the spread effect
+	        const spreadDir = { x: Math.random() - 0.5, y: Math.random() - 0.5 };
+	        
+	        // Normalize the direction vector
+	        const magnitude = Math.sqrt(spreadDir.x * spreadDir.x + spreadDir.y * spreadDir.y);
+	        spreadDir.x /= magnitude;
+	        spreadDir.y /= magnitude;
+	
+	        particle.vx += spreadDir.x * effectStrength;
+	        particle.vy += spreadDir.y * effectStrength;
+	        
+	
+	        if (infect) {
+	            particle.infect();
+	        }
+	    });
+	}
+
     // Handle user interaction
     handleInteraction(x, y) {
 	    const repulsionRadius = 100; // Distance within which particles will be repulsed
@@ -672,6 +638,15 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	            });
 	        }
 	    }
+	}
+
+	debugInfect(p1, p2) {
+		p1.effectRGB = [255, 5, 5];
+		p1.effectColor = 'rgba(255, 5, 5, 1)';
+		p1.infect(); 
+		p2.effectRGB = [255, 5, 5];		
+		p1.effectColor = 'rgba(255, 5, 5, 1)';
+		p2.infect();
 	}
 
 	killAll() {

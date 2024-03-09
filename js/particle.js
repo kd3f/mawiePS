@@ -27,8 +27,6 @@ class Particle { // adjustSpeed = 'dynamic' || 'precomputed'
 
         this.findClosestPrecomputedVelocity = null; // ParticleSystem function
 
-        this.check = false;
-
     }
 
     setFindClosestPrecomputedVelocity(fn) {

@@ -18,7 +18,7 @@ class SettingsUI {
             distanceMethod: this.system.distanceMethod,
             precomputeVelocities: this.system.precomputeVelocities,
             particleLinesDistance: this.system.distanceForLines,
-            particlesNumber: this.system.particleCount
+            particlesNumber: this.manager.particleCount
         });
     }
 
