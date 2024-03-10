@@ -1,5 +1,5 @@
 class Particle { // adjustSpeed = 'dynamic' || 'precomputed' 
-    constructor(x, y, radius, adjustSpeed='dynamic') {
+    constructor(x, y, radius, adjustSpeed='dynamic', color=[245, 5, 213, 1], effectColor=[93, 198, 240, 1]) {
         this.x = x;
         this.y = y;
         this.vx = Math.random() * 2 - 1; // Velocity x
@@ -8,15 +8,14 @@ class Particle { // adjustSpeed = 'dynamic' || 'precomputed'
         //this.squaredRadius = Math.pow(this.radius, 2);
         this.squaredRadius = (this.radius + this.radius) * (this.radius + this.radius);
 
-        this.color = 'rgba(245, 5, 213, 1)'; //'rgba(255, 255, 255, 1)'; // Default color
+        this.color = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3]})`; // Default color
         
         this.originalColor = this.color; // Default color
-        this.originalColorRGB = [245, 5, 213]; 
+        this.originalColorRGB = [color[0], color[1], color[2]]; 
 
-        this.effectColor = 'rgba(93, 198, 240, 1)'; //'rgba(0, 255, 255, 1)'; // Color when affected by repulsion/effect
-        this.effectRGB = [93, 198, 240]; 
+        this.effectColor = `rgba(${effectColor[0]}, ${effectColor[1]}, ${effectColor[2]}, ${effectColor[3]})`; // Color when affected by repulsion/effect
+        this.effectRGB = [effectColor[0], effectColor[1], effectColor[2]];
 
-        //this.color = this.originalColor;
         this.infected = false; // Whether the particle is currently affected by the effect
         this.infectionStep = 0; // Tracks the progression of the infection (color change)
 
@@ -34,7 +33,7 @@ class Particle { // adjustSpeed = 'dynamic' || 'precomputed'
     }
 
     adjustForMinimumSpeedDynamic() {
-        // Adjust for minimum speed :: more accurate simulation but slow
+        // Adjust for minimum speed :: more accurate simulation but slower
         const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
         const angle = Math.atan2(this.vy, this.vx);
         if (speed < this.minSpeed) {

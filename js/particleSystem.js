@@ -4,7 +4,6 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
         this.bins = {};
         
         this.subdividedBins = null;
-        //this.overcrowdedBins = new Set(); // To keep track of overcrowded subdividedBins
         
         this.subBinParticleNumThreshold = 5;
 		this.subBinMinBinSize = 25;
@@ -25,27 +24,38 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 		this.distanceMethodCollisions = null; 
 		this.collisionLogic = null; 	
 
+		/* distance and density settings */
+		
 		//70^2 for 'squared'  || 'hybrid'
-        this.distanceForLines = (this.distanceMethodType === 'squared' || this.distanceMethodType === 'hybrid') ? 4900 : 80; //70^2
-        this.minDistanceForLines; 
+        this.distanceForLines = (this.distanceMethodType === 'squared' || this.distanceMethodType === 'hybrid') ? 4900 : 80; 
+        
+        this.minDistanceForLines; // avoid drawing lines for this distance (will be set at particle radius * 2) 
 
-        this.minDistanceForLinesOffset = 15; // avoid drawing lines for this distance
+        this.minDistanceForLinesOffset = 15; // avoid drawing lines for this minDistanceForLines + this offset
         
         //Todo :: improve line drawings for high density bins
-        this.particlesDensityNumberForLines = 2500; // number of particles within the same bin to switch logic
+        this.particlesDensityNumberForLines = 50; // number of particles within the same bin to switch logic
 		
 		this.setDistanceOptions(this.distanceMethodType); 
 
         this.enablePrecomputeVelocities = enablePrecomputeVelocities;
         //this.collisionThreshold = 1;
 
-        this.showBinsBoundaries = false;
-        this.showSubdividedBins = false;
-
         if (this.enablePrecomputeVelocities) {
         	this.precomputedVelocities = [];
         	this.precomputeParticlesVelocities();
 		}
+
+		/* colors*/
+		this.particleColor = [245, 5, 213, 1];
+		this.particleEffectColor = [93, 198, 240, 1];
+		const maxAlphaForHighDensityLines = .6;
+		this.fixedColorForHighDensityLines = `rgba(${this.particleColor[0]}, ${this.particleColor[1]}, ${this.particleColor[2]}, ${maxAlphaForHighDensityLines})`;; // Example: white with 50% opacity
+		//this.fixedColorForHighDensityLines = `rgba(255, 255, 255, ${maxAlphaForHighDensityLines})`;; // Debug white 
+
+		/* debug draw*/
+		this.showBinsBoundaries = false;
+        this.showSubdividedBins = false;
 
         this.updateBinSize();
     }
@@ -57,6 +67,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 			this.distanceMethodCollisions = this.getDistanceSquared;
 			this.collisionLogic = this.collisionLogicSquared;
 			this.minDistanceForLines = (this.particleRadius*2) * (this.particleRadius*2) + (this.minDistanceForLinesOffset * this.minDistanceForLinesOffset); // (particle radius * 2)^2 + offset^2
+			this.particlesDensityNumberForLines = this.particlesDensityNumberForLines * this.particlesDensityNumberForLines;
 		}
         if (distanceMethod === 'euclidean') {
         	this.distanceMethodLines = this.getEuclideanDistance;
@@ -69,6 +80,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
         	this.distanceMethodCollisions =  this.getEuclideanDistance;
         	this.collisionLogic = this.collisionLogicEuclidean;
         	this.minDistanceForLines =  (this.particleRadius*2) + (this.minDistanceForLinesOffset * this.minDistanceForLinesOffset); // particle radius + offset^2
+        	this.particlesDensityNumberForLines = this.particlesDensityNumberForLines * this.particlesDensityNumberForLines;
         }
     }
 
@@ -114,7 +126,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
     // Add particle to system
     addParticle(x, y) {
     	const speedMethod = (this.enablePrecomputeVelocities) ? 'precomputed' : 'dynamic';
-        const particle = new Particle(x, y, this.particleRadius, speedMethod);
+        const particle = new Particle(x, y, this.particleRadius, speedMethod, this.particleColor, this.particleEffectColor);
         if (this.enablePrecomputeVelocities) particle.setFindClosestPrecomputedVelocity(this.findClosestPrecomputedVelocity.bind(this));
         this.particles.push(particle);
     }
@@ -340,7 +352,7 @@ class ParticleSystem { /* distanceMethodType = 'squared' || 'euclidean' || 'hybr
 	// skipSameBinConnections could be helpful for really small bins check comments
 	drawConnections(ctx, reach = 1) {
 	    // Use a fixed color and alpha for close groups
-	    const fixedColor = 'rgba(245, 5, 213, 0.5)'; // Example: white with 50% opacity
+	    const fixedColor = this.fixedColorForHighDensityLines; 
 	
 	    const linesByColor = new Map();
 	    const addLine = (particleA, particleB, color) => {
